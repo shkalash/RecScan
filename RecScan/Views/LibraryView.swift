@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 import VisionKit
 
 /// The app's root screen: a filtered grid of every captured receipt.
@@ -32,6 +33,25 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $model.isPresentingExport) {
             ExportView(receipts: model.selectedReceipts)
+        }
+        .sheet(isPresented: $model.isPresentingArchiveExport) {
+            ArchiveExportView(selection: model.selectedReceipts)
+        }
+        .sheet(item: $model.importResult) { result in
+            ArchiveImportSummaryView(result: result)
+        }
+        .fileImporter(
+            isPresented: $model.isPresentingArchiveImporter,
+            allowedContentTypes: [.zip]
+        ) { outcome in
+            guard case .success(let url) = outcome else { return }
+            Task { await model.importArchive(at: url, using: receiptStore) }
+        }
+        .onOpenURL { url in
+            // AirDrop and "Open with" copy the file into Documents/Inbox and hand us
+            // the copy, so it is ours to delete once merged.
+            guard model.canHandle(url) else { return }
+            Task { await model.importArchive(at: url, using: receiptStore, isInbox: true) }
         }
         .confirmationDialog(
             "library.delete.confirm.title",
@@ -90,6 +110,21 @@ struct LibraryView: View {
                     Label("library.action.scan", systemImage: SystemImage.scan)
                 }
                 .disabled(!VNDocumentCameraViewController.isSupported)
+
+                Menu {
+                    Button {
+                        model.isPresentingArchiveExport = true
+                    } label: {
+                        Label("archive.action.export", systemImage: SystemImage.archiveExport)
+                    }
+                    Button {
+                        model.isPresentingArchiveImporter = true
+                    } label: {
+                        Label("archive.action.import", systemImage: SystemImage.archiveImport)
+                    }
+                } label: {
+                    Label("library.action.more", systemImage: SystemImage.more)
+                }
             }
         }
 

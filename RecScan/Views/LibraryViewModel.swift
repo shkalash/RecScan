@@ -37,6 +37,9 @@ final class LibraryViewModel {
     var isPresentingScanner = false
     var isPresentingFilter = false
     var isPresentingExport = false
+    var isPresentingArchiveExport = false
+    var isPresentingArchiveImporter = false
+    var importResult: ArchiveImportResult?
     var isConfirmingDeletion = false
     var isImporting = false
     var presentedError: PresentableError?
@@ -115,10 +118,48 @@ final class LibraryViewModel {
         }
     }
 
+    // MARK: - Archive
+
+    /// Reads an archive and merges it into the library.
+    ///
+    /// - Parameter isInbox: `true` when the file arrived via `.onOpenURL`, which copies
+    ///   it into `Documents/Inbox`. Those copies are ours to delete; a file the user
+    ///   picked from elsewhere is not.
+    func importArchive(
+        at url: URL,
+        using store: any ReceiptStoring,
+        isInbox: Bool = false
+    ) async {
+        isImporting = true
+        defer { isImporting = false }
+
+        // A picked URL is security-scoped and unreadable until access is started.
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        do {
+            let staged = try await Task.detached(priority: .userInitiated) {
+                try ArchiveImporter().read(archiveAt: url).receipts
+            }.value
+            importResult = try await store.importArchived(staged)
+            if isInbox { try? FileManager.default.removeItem(at: url) }
+        } catch {
+            presentedError = PresentableError(titleKey: ErrorTitle.importArchiveFailed, error: error)
+        }
+    }
+
+    /// Handles a file handed over by AirDrop or "Open with".
+    ///
+    /// - Returns: `true` when the URL was something this app should act on.
+    func canHandle(_ url: URL) -> Bool {
+        url.pathExtension.lowercased() == ArchiveManifest.Layout.archiveFileExtension
+    }
+
     // MARK: - Constants
 
     private enum ErrorTitle {
         static let importFailed: String.LocalizationValue = "error.import.title"
         static let deleteFailed: String.LocalizationValue = "error.delete.title"
+        static let importArchiveFailed: String.LocalizationValue = "error.archive.import.title"
     }
 }

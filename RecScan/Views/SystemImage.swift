@@ -16,4 +16,7 @@ enum SystemImage {
     static let missingImage = "doc.questionmark"
     static let emptyLibrary = "doc.text.image"
     static let pages = "doc.on.doc"
+    static let more = "ellipsis.circle"
+    static let archiveExport = "arrow.up.doc"
+    static let archiveImport = "arrow.down.doc"
 }
