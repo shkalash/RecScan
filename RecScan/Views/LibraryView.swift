@@ -53,6 +53,9 @@ struct LibraryView: View {
         .sheet(isPresented: isReviewing) {
             ReceiptReviewSheet(receipts: model.pendingReview)
         }
+        .sheet(isPresented: $model.isPresentingReport) {
+            ReportView()
+        }
         .sheet(isPresented: $model.isPresentingSettings) {
             SettingsView()
         }
@@ -184,6 +187,11 @@ struct LibraryView: View {
                         Label("archive.action.import", systemImage: SystemImage.archiveImport)
                     }
                     Divider()
+                    Button {
+                        model.isPresentingReport = true
+                    } label: {
+                        Label("report.title", systemImage: SystemImage.report)
+                    }
                     Button {
                         model.isPresentingSettings = true
                     } label: {

@@ -70,7 +70,10 @@ extension ImagePipelineSuite {
         }
 
         private var noSummaryOptions: ExportOptions {
-            ExportOptions(layout: .onePerPage, includeHeader: true, includeSummaryPage: false, includeSearchableText: false)
+            ExportOptions(
+                layout: .onePerPage, includeHeader: true, includeSummaryPage: false,
+                includeCategoryBreakdown: false, includeSearchableText: false
+            )
         }
 
         // MARK: - Tests
@@ -112,6 +115,42 @@ extension ImagePipelineSuite {
             let url = try builder.buildPDF(receipts: receipts, options: options)
 
             #expect(try pageCount(of: url) == 4)
+        }
+
+        @Test("The category breakdown adds a page of its own")
+        func categoryBreakdownAddsAPage() throws {
+            let receipts = try (1...3).map { try storedSnapshot(day: $0, amount: 10) }
+            var options = noSummaryOptions
+            options.includeSummaryPage = true
+            options.includeCategoryBreakdown = true
+
+            let url = try builder.buildPDF(receipts: receipts, options: options)
+
+            // 3 receipts + month summary + category breakdown.
+            #expect(try pageCount(of: url) == 5)
+        }
+
+        @Test("Turning the breakdown off removes only that page")
+        func breakdownCanBeTurnedOff() throws {
+            let receipts = try (1...2).map { try storedSnapshot(day: $0, amount: 10) }
+            var options = noSummaryOptions
+            options.includeSummaryPage = true
+            options.includeCategoryBreakdown = false
+
+            let url = try builder.buildPDF(receipts: receipts, options: options)
+
+            #expect(try pageCount(of: url) == 3)
+        }
+
+        @Test("The report's period is the span of what was exported")
+        func reportSpansTheSelection() throws {
+            let receipts = try (1...3).map { try storedSnapshot(day: $0) }
+
+            let span = try #require(PDFBuilder.span(of: receipts))
+
+            // Half-open like every other interval here, so the last receipt is inside.
+            #expect(span.contains(receipts[0].capturedAt))
+            #expect(span.contains(receipts[2].capturedAt))
         }
 
         @Test("Pages are US Letter at 72 dpi")

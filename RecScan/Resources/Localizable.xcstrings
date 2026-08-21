@@ -595,6 +595,17 @@
         }
       }
     },
+    "error.report.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Build Report"
+          }
+        }
+      }
+    },
     "error.save.title": {
       "extractionState": "manual",
       "localizations": {
@@ -668,6 +679,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Two per page"
+          }
+        }
+      }
+    },
+    "export.option.categoryBreakdown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include spend by category"
           }
         }
       }
@@ -1346,6 +1368,39 @@
         }
       }
     },
+    "pdf.report.allTime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All time"
+          }
+        }
+      }
+    },
+    "pdf.report.period %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period: %@"
+          }
+        }
+      }
+    },
+    "pdf.report.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expenses by Category"
+          }
+        }
+      }
+    },
     "pdf.summary.column.count": {
       "extractionState": "manual",
       "localizations": {
@@ -1408,6 +1463,117 @@
           "stringUnit": {
             "state": "translated",
             "value": "Total"
+          }
+        }
+      }
+    },
+    "report.empty.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No receipts fall in the selected dates."
+          }
+        }
+      }
+    },
+    "report.empty.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing in This Period"
+          }
+        }
+      }
+    },
+    "report.line.count %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipt"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "report.mixedCurrencies": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receipts in other currencies are not included in these totals."
+          }
+        }
+      }
+    },
+    "report.section.breakdown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By Category"
+          }
+        }
+      }
+    },
+    "report.section.period": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period"
+          }
+        }
+      }
+    },
+    "report.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expense Report"
+          }
+        }
+      }
+    },
+    "report.total": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total"
+          }
+        }
+      }
+    },
+    "report.uncategorised": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncategorised"
           }
         }
       }

@@ -27,4 +27,5 @@ enum SystemImage {
     static let needsReview = "exclamationmark.circle.fill"
     static let photos = "photo.on.rectangle"
     static let files = "folder"
+    static let report = "chart.pie"
 }

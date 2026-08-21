@@ -23,7 +23,11 @@ final class ExportViewModel {
     var presentedError: PresentableError?
 
     /// Generates the PDF for `receipts`, replacing any previously generated file.
-    func generate(receipts: [ReceiptSnapshot], fileStore: any ImageFileStoring) async {
+    func generate(
+        receipts: [ReceiptSnapshot],
+        store: any ReceiptStoring,
+        fileStore: any ImageFileStoring
+    ) async {
         guard !receipts.isEmpty, !isGenerating else { return }
 
         discardGeneratedFile()
@@ -33,11 +37,14 @@ final class ExportViewModel {
         let options = options
         // Resolved here, at the boundary, then passed down into pure rendering code.
         let currency = AppSettings.defaultCurrencyCode()
+        // Names resolved here; the renderer runs off the main actor and has no store.
+        let names = (try? await store.allCategories())
+            .map { Dictionary(uniqueKeysWithValues: $0.map { ($0.id, $0.name) }) } ?? [:]
         do {
             // Rendering decodes full-resolution images; keeping it off the main actor
             // is what stops the sheet from freezing on a large selection.
             generatedURL = try await Task.detached(priority: .userInitiated) {
-                try PDFBuilder(fileStore: fileStore, defaultCurrencyCode: currency).buildPDF(receipts: receipts, options: options)
+                try PDFBuilder(fileStore: fileStore, defaultCurrencyCode: currency, categoryNames: names).buildPDF(receipts: receipts, options: options)
             }.value
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.exportFailed, error: error)

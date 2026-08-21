@@ -27,12 +27,18 @@ struct PDFBuilder: Sendable {
     private let defaultCurrencyCode: String
     private let logger = LogCategory.export.logger
 
+    /// Category names, for the breakdown page. Passed in because the renderer has no
+    /// access to the store and must not acquire one — it runs off the main actor.
+    private let categoryNames: [UUID: String]
+
     init(
         fileStore: any ImageFileStoring = ImageFileStore(),
-        defaultCurrencyCode: String = AppSettings.fallbackCurrencyCode
+        defaultCurrencyCode: String = AppSettings.fallbackCurrencyCode,
+        categoryNames: [UUID: String] = [:]
     ) {
         self.fileStore = fileStore
         self.defaultCurrencyCode = defaultCurrencyCode
+        self.categoryNames = categoryNames
     }
 
     /// Generates the PDF and returns the URL it was written to.
@@ -56,7 +62,20 @@ struct PDFBuilder: Sendable {
             ? ExportSummary(receipts: ordered, defaultCurrencyCode: defaultCurrencyCode)
             : nil
         let summaryPages = summary.map { Self.summaryPages(for: $0) } ?? []
-        let totalPageCount = pages.count + summaryPages.count
+
+        // The report covers exactly what is being exported, so its period is the span of
+        // the selection rather than a separately chosen range.
+        let report: CategoryReport? = options.includeCategoryBreakdown && options.includeSummaryPage
+            ? CategoryReport(
+                receipts: ordered,
+                names: categoryNames,
+                interval: Self.span(of: ordered),
+                defaultCurrencyCode: defaultCurrencyCode,
+                uncategorisedLabel: String(localized: "report.uncategorised")
+            )
+            : nil
+        let reportPages = report.map { Self.reportPages(for: $0) } ?? []
+        let totalPageCount = pages.count + summaryPages.count + reportPages.count
 
         let url = FileManager.default.temporaryDirectory
             .appending(path: Self.fileName(generatedAt: generatedAt))
@@ -82,6 +101,19 @@ struct PDFBuilder: Sendable {
                         context.beginPage()
                         drawSummary(summary, months: months, isFinalPage: index == summaryPages.count - 1)
                         drawFooter(pageNumber: pages.count + index + 1, of: totalPageCount)
+                    }
+                }
+            }
+
+            if let report {
+                for (index, lines) in reportPages.enumerated() {
+                    autoreleasepool {
+                        context.beginPage()
+                        drawReport(report, lines: lines, isFinalPage: index == reportPages.count - 1)
+                        drawFooter(
+                            pageNumber: pages.count + summaryPages.count + index + 1,
+                            of: totalPageCount
+                        )
                     }
                 }
             }
@@ -291,6 +323,111 @@ struct PDFBuilder: Sendable {
 
     /// Line box for the summary title, as a multiple of its point size.
     private static let summaryTitleLineHeightMultiple: CGFloat = 1.4
+
+    // MARK: - Category report
+
+    /// The window the exported receipts actually cover.
+    static func span(of receipts: [ReceiptSnapshot]) -> DateInterval? {
+        guard let first = receipts.first?.capturedAt, let last = receipts.last?.capturedAt else {
+            return nil
+        }
+        // `ordered` is ascending, and the interval is half-open elsewhere, so the end is
+        // nudged past the final receipt to keep it inside.
+        return DateInterval(start: min(first, last), end: max(first, last).addingTimeInterval(1))
+    }
+
+    /// Splits category lines across pages, reusing the summary's row budget.
+    static func reportPages(for report: CategoryReport) -> [[CategoryReport.Line]] {
+        guard !report.lines.isEmpty else { return [[]] }
+        return report.lines.chunked(into: monthRowsPerSummaryPage)
+    }
+
+    private func drawReport(
+        _ report: CategoryReport,
+        lines: [CategoryReport.Line],
+        isFinalPage: Bool
+    ) {
+        let content = Self.contentRect
+        var cursorY = content.minY
+
+        Self.drawText(
+            String(localized: "pdf.report.title"),
+            in: CGRect(
+                x: content.minX,
+                y: cursorY,
+                width: content.width,
+                height: PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
+            ),
+            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTitle, weight: .semibold),
+            alignment: .left,
+            color: .label
+        )
+        cursorY += PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
+
+        Self.drawText(
+            String(localized: "pdf.report.period \(Self.periodDescription(report.interval))"),
+            in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
+            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody),
+            alignment: .left,
+            color: .secondaryLabel
+        )
+        cursorY += PDFMetrics.Summary.rowHeight + PDFMetrics.Summary.sectionSpacing
+
+        cursorY = drawSummaryRow(
+            month: String(localized: "report.section.breakdown"),
+            count: String(localized: "pdf.summary.column.count"),
+            total: String(localized: "pdf.summary.column.total"),
+            atY: cursorY,
+            in: content,
+            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody, weight: .semibold)
+        )
+        cursorY = drawRule(atY: cursorY, in: content)
+
+        for line in lines {
+            cursorY = drawSummaryRow(
+                month: line.name,
+                count: line.count.formatted(),
+                total: ReceiptFormatting.amount(
+                    line.total, currencyCode: report.currencyCode, defaultCode: defaultCurrencyCode
+                ) ?? "",
+                atY: cursorY,
+                in: content,
+                font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody)
+            )
+        }
+
+        guard isFinalPage else { return }
+
+        cursorY = drawRule(atY: cursorY, in: content)
+        cursorY = drawSummaryRow(
+            month: String(localized: "report.total"),
+            count: report.receiptCount.formatted(),
+            total: ReceiptFormatting.amount(
+                report.grandTotal, currencyCode: report.currencyCode, defaultCode: defaultCurrencyCode
+            ) ?? "",
+            atY: cursorY,
+            in: content,
+            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
+        )
+
+        if report.hasExcludedCurrencies {
+            cursorY += PDFMetrics.Summary.sectionSpacing
+            Self.drawText(
+                String(localized: "pdf.summary.mixedCurrencies"),
+                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
+                font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
+                alignment: .left,
+                color: .secondaryLabel
+            )
+        }
+    }
+
+    private static func periodDescription(_ interval: DateInterval?) -> String {
+        guard let interval else { return String(localized: "pdf.report.allTime") }
+        let start = ReceiptFormatting.receiptDate(for: interval.start)
+        let end = ReceiptFormatting.receiptDate(for: interval.end.addingTimeInterval(-1))
+        return "\(start) – \(end)"
+    }
 
     // MARK: - Summary drawing
 

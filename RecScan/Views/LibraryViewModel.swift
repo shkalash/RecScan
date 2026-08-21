@@ -49,6 +49,7 @@ final class LibraryViewModel {
     /// Gathers `.onOpenURL` callbacks, which arrive one per file, into one batch.
     private let handoffQueue = ImportQueue()
     var isPresentingSettings = false
+    var isPresentingReport = false
     var importResult: ArchiveImportResult?
     /// Newly added receipts awaiting their details. Empty dismisses the sheet.
     var pendingReview: [ReceiptSnapshot] = []

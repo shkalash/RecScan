@@ -51,45 +51,23 @@ struct ExportSummary: Sendable, Equatable {
         calendar: Calendar = .current,
         defaultCurrencyCode: String = AppSettings.fallbackCurrencyCode
     ) {
-        receiptCount = receipts.count
+        // Grouping, totalling and currency resolution all live in ReceiptTotals; this
+        // only supplies the month key and the newest-first order.
+        let totals = ReceiptTotals(
+            receipts: receipts,
+            defaultCurrencyCode: defaultCurrencyCode,
+            key: { receipt in
+                calendar.dateInterval(of: .month, for: receipt.capturedAt)?.start
+                    ?? calendar.startOfDay(for: receipt.capturedAt)
+            },
+            areInIncreasingOrder: { $0.id > $1.id }
+        )
 
-        let priced = receipts.filter { $0.amount != nil }
-        let dominantCurrency = Self.dominantCurrencyCode(in: priced, defaultCode: defaultCurrencyCode)
-        currencyCode = dominantCurrency
-
-        let counted = priced.filter {
-            Self.effectiveCurrencyCode(for: $0, defaultCode: defaultCurrencyCode) == dominantCurrency
-        }
-        hasExcludedCurrencies = counted.count != priced.count
-
-        let sections = MonthGrouper.group(counted, calendar: calendar) { $0.capturedAt }
-        monthTotals = sections.map { section in
-            MonthTotal(
-                id: section.id,
-                count: section.items.count,
-                total: section.items.reduce(Decimal.zero) { $0 + ($1.amount ?? .zero) }
-            )
-        }
-
-        grandTotal = monthTotals.reduce(Decimal.zero) { $0 + $1.total }
+        receiptCount = totals.receiptCount
+        monthTotals = totals.groups.map { MonthTotal(id: $0.id, count: $0.count, total: $0.total) }
+        grandTotal = totals.grandTotal
+        currencyCode = totals.currencyCode
+        hasExcludedCurrencies = totals.hasExcludedCurrencies
     }
 
-    // MARK: - Private
-
-    private static func effectiveCurrencyCode(for receipt: ReceiptSnapshot, defaultCode: String) -> String? {
-        receipt.currencyCode ?? defaultCode
-    }
-
-    private static func dominantCurrencyCode(in receipts: [ReceiptSnapshot], defaultCode: String) -> String? {
-        let codes = receipts.compactMap { effectiveCurrencyCode(for: $0, defaultCode: defaultCode) }
-        guard !codes.isEmpty else { return nil }
-
-        let frequencies = codes.reduce(into: [String: Int]()) { counts, code in
-            counts[code, default: 0] += 1
-        }
-        // Ties break on the code itself so the result is deterministic across runs.
-        return frequencies.max { lhs, rhs in
-            lhs.value == rhs.value ? lhs.key > rhs.key : lhs.value < rhs.value
-        }?.key
-    }
 }

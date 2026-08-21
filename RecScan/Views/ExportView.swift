@@ -13,6 +13,7 @@ struct ExportView: View {
     let receipts: [ReceiptSnapshot]
 
     @State private var model = ExportViewModel()
+    @Environment(\.receiptStore) private var receiptStore
     @Environment(\.imageFileStore) private var imageFileStore
     @Environment(\.dismiss) private var dismiss
 
@@ -37,6 +38,8 @@ struct ExportView: View {
                 Section {
                     Toggle("export.option.header", isOn: $model.options.includeHeader)
                     Toggle("export.option.summary", isOn: $model.options.includeSummaryPage)
+                    Toggle("export.option.categoryBreakdown", isOn: $model.options.includeCategoryBreakdown)
+                        .disabled(!model.options.includeSummaryPage)
                     Toggle("export.option.searchableText", isOn: $model.options.includeSearchableText)
                 } header: {
                     Text("export.section.contents")
@@ -70,7 +73,7 @@ struct ExportView: View {
                 Label("export.action.share", systemImage: SystemImage.export)
             }
             Button("export.action.regenerate") {
-                Task { await model.generate(receipts: receipts, fileStore: imageFileStore) }
+                Task { await model.generate(receipts: receipts, store: receiptStore, fileStore: imageFileStore) }
             }
         } else if model.isGenerating {
             HStack {
@@ -80,7 +83,7 @@ struct ExportView: View {
             }
         } else {
             Button("export.action.generate") {
-                Task { await model.generate(receipts: receipts, fileStore: imageFileStore) }
+                Task { await model.generate(receipts: receipts, store: receiptStore, fileStore: imageFileStore) }
             }
             .disabled(receipts.isEmpty)
         }
