@@ -15,15 +15,31 @@ import UIKit
 /// a shipping build and does not run in a normal debug session either.
 enum DebugSampleData {
 
-    /// Pass `-seedSampleData <count>` in the scheme or via `simctl launch`.
+    /// Pass `-seedSampleData` in the scheme, optionally followed by a count.
     private static let flag = "-seedSampleData"
+    private static let defaultCount = 7
 
+    /// The requested receipt count, or `nil` when seeding was not asked for.
+    ///
+    /// Simulator-only, and deliberately so: seeding **replaces** the library, and a
+    /// scheme argument left ticked while running on a phone would destroy real receipts.
+    /// The guard makes that impossible rather than merely unlikely.
     static var requestedCount: Int? {
+        #if targetEnvironment(simulator)
         let arguments = ProcessInfo.processInfo.arguments
-        guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else {
-            return nil
+
+        // Xcode may deliver "-seedSampleData 7" as one token or two depending on how the
+        // scheme argument was entered, so both forms are accepted.
+        if let combined = arguments.first(where: { $0.hasPrefix(flag + " ") }) {
+            return Int(combined.dropFirst(flag.count + 1).trimmingCharacters(in: .whitespaces))
+                ?? defaultCount
         }
-        return Int(arguments[index + 1])
+        guard let index = arguments.firstIndex(of: flag) else { return nil }
+        if index + 1 < arguments.count, let count = Int(arguments[index + 1]) { return count }
+        return defaultCount
+        #else
+        return nil
+        #endif
     }
 
     /// Replaces the library with `count` synthetic receipts.
