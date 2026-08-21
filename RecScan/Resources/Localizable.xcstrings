@@ -805,6 +805,17 @@
         }
       }
     },
+    "filter.category.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick any combination. With none selected, every receipt is shown."
+          }
+        }
+      }
+    },
     "filter.custom.end": {
       "extractionState": "manual",
       "localizations": {

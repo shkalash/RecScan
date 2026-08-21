@@ -11,26 +11,42 @@ struct ReceiptFilter: Hashable, Sendable {
     var customStart: Date
     var customEnd: Date
     var searchText: String
-    /// `nil` means every category, including uncategorised receipts.
-    var categoryID: UUID?
+    /// Categories to include. Empty means every category, which is also what the
+    /// "All Categories" row selects — clearing rather than being a value of its own.
+    var categoryIDs: Set<UUID>
 
     init(
         preset: DateRangePreset = .allTime,
         customStart: Date = Date(),
         customEnd: Date = Date(),
         searchText: String = "",
-        categoryID: UUID? = nil
+        categoryIDs: Set<UUID> = []
     ) {
         self.preset = preset
         self.customStart = customStart
         self.customEnd = customEnd
         self.searchText = searchText
-        self.categoryID = categoryID
+        self.categoryIDs = categoryIDs
     }
 
     /// Whether the filter narrows the library at all. Drives the toolbar badge.
     var isActive: Bool {
-        preset != .allTime || !trimmedSearchText.isEmpty || categoryID != nil
+        preset != .allTime || !trimmedSearchText.isEmpty || !categoryIDs.isEmpty
+    }
+
+    /// Whether `id` is included. An empty selection includes everything.
+    func includes(categoryID id: UUID) -> Bool {
+        categoryIDs.isEmpty || categoryIDs.contains(id)
+    }
+
+    /// Adds or removes `id`, leaving an empty set when the last one is removed — which
+    /// reads as "all" rather than "none", the only sensible meaning for an empty filter.
+    mutating func toggleCategory(_ id: UUID) {
+        if categoryIDs.contains(id) {
+            categoryIDs.remove(id)
+        } else {
+            categoryIDs.insert(id)
+        }
     }
 
     var trimmedSearchText: String {

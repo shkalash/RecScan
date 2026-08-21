@@ -45,12 +45,12 @@ struct ReceiptPredicateFactoryTests {
     private func fetch(
         interval: DateInterval? = nil,
         searchText: String = "",
-        categoryID: UUID? = nil
+        categoryIDs: Set<UUID> = []
     ) throws -> [Receipt] {
         try context.fetch(
             FetchDescriptor<Receipt>(
                 predicate: ReceiptPredicateFactory.makePredicate(
-                    interval: interval, searchText: searchText, categoryID: categoryID
+                    interval: interval, searchText: searchText, categoryIDs: categoryIDs
                 )
             )
         )
@@ -144,17 +144,31 @@ struct ReceiptPredicateFactoryTests {
         #expect(try fetch(interval: nil).count == 2)
     }
 
-    @Test("Filtering by category returns only that category")
+    @Test("Filtering by one category returns only that category")
     func filtersByCategory() throws {
         let wanted = UUID()
         insert(day: 1, categoryID: wanted)
         insert(day: 2, categoryID: UUID())
         insert(day: 3)
 
-        let results = try fetch(categoryID: wanted)
+        let results = try fetch(categoryIDs: [wanted])
 
         #expect(results.count == 1)
         #expect(results.first?.categoryID == wanted)
+    }
+
+    @Test("Several categories can be mixed")
+    func filtersBySeveralCategories() throws {
+        let first = UUID(), second = UUID()
+        insert(day: 1, categoryID: first)
+        insert(day: 2, categoryID: second)
+        insert(day: 3, categoryID: UUID())
+        insert(day: 4)
+
+        let results = try fetch(categoryIDs: [first, second])
+
+        #expect(results.count == 2)
+        #expect(Set(results.compactMap(\.categoryID)) == [first, second])
     }
 
     @Test("No category selection returns every receipt, categorised or not")
@@ -162,7 +176,18 @@ struct ReceiptPredicateFactoryTests {
         insert(day: 1, categoryID: UUID())
         insert(day: 2)
 
-        #expect(try fetch(categoryID: nil).count == 2)
+        // An empty selection must mean "all", not "none" -- an empty IN list would match
+        // nothing, so it is short-circuited rather than passed to the store.
+        #expect(try fetch(categoryIDs: []).count == 2)
+    }
+
+    @Test("Uncategorised receipts are excluded once any category is selected")
+    func uncategorisedExcludedWhenFiltering() throws {
+        let wanted = UUID()
+        insert(day: 1, categoryID: wanted)
+        insert(day: 2)
+
+        #expect(try fetch(categoryIDs: [wanted]).count == 1)
     }
 
     @Test("Category, date and text all apply together")
@@ -177,7 +202,7 @@ struct ReceiptPredicateFactoryTests {
             end: TestCalendar.date(year: 2026, month: 5, day: 1, hour: 0)
         )
 
-        let results = try fetch(interval: interval, searchText: "blue", categoryID: wanted)
+        let results = try fetch(interval: interval, searchText: "blue", categoryIDs: [wanted])
 
         #expect(results.count == 1)
         #expect(results.first?.capturedAt == TestCalendar.date(year: 2026, month: 4, day: 5))

@@ -27,8 +27,41 @@ struct ReceiptFilterTests {
     func categoryActivatesFilter() {
         // Without this the toolbar badge would not light up for a category-only filter,
         // and a narrowed library would look like the whole library.
-        #expect(ReceiptFilter(categoryID: UUID()).isActive)
-        #expect(!ReceiptFilter(categoryID: nil).isActive)
+        #expect(ReceiptFilter(categoryIDs: [UUID()]).isActive)
+        #expect(!ReceiptFilter(categoryIDs: []).isActive)
+    }
+
+    @Test("Toggling adds and removes categories")
+    func togglingCategories() {
+        var filter = ReceiptFilter()
+        let first = UUID(), second = UUID()
+
+        filter.toggleCategory(first)
+        filter.toggleCategory(second)
+        #expect(filter.categoryIDs == [first, second])
+
+        filter.toggleCategory(first)
+        #expect(filter.categoryIDs == [second])
+    }
+
+    @Test("Removing the last category means all, not none")
+    func emptyingMeansAll() {
+        var filter = ReceiptFilter()
+        let only = UUID()
+        filter.toggleCategory(only)
+
+        filter.toggleCategory(only)
+
+        #expect(filter.categoryIDs.isEmpty)
+        #expect(!filter.isActive)
+        #expect(filter.includes(categoryID: UUID()))
+    }
+
+    @Test("An empty selection includes every category")
+    func emptyIncludesEverything() {
+        let filter = ReceiptFilter()
+
+        #expect(filter.includes(categoryID: UUID()))
     }
 
     @Test("A custom range covers whole days, so a single-day range is not empty")

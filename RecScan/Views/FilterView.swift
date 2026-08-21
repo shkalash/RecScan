@@ -15,6 +15,18 @@ struct FilterView: View {
     @Query(sort: \ReceiptCategory.name) private var categories: [ReceiptCategory]
     @Environment(\.dismiss) private var dismiss
 
+    /// A toggleable row. Uses a filled/empty circle rather than a checkmark so an
+    /// unselected row still shows an affordance — with a bare checkmark, a section with
+    /// nothing selected looks like plain text.
+    private func categoryRow(title: Text, isOn: Bool, isMuted: Bool = false) -> some View {
+        LabeledContent {
+            Image(systemName: isOn ? SystemImage.selectionOn : SystemImage.selectionOff)
+                .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+        } label: {
+            title.foregroundStyle(isMuted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -44,15 +56,35 @@ struct FilterView: View {
                 }
 
                 if !categories.isEmpty {
-                    Section("filter.section.category") {
-                        Picker("filter.section.category", selection: $filter.categoryID) {
-                            Text("filter.category.all").tag(UUID?.none)
-                            ForEach(categories) { category in
-                                Text(category.name).tag(UUID?.some(category.id))
-                            }
+                    Section {
+                        // "All Categories" clears rather than being a value of its own,
+                        // so it reads as the off switch for the whole section.
+                        Button {
+                            filter.categoryIDs.removeAll()
+                        } label: {
+                            categoryRow(
+                                title: Text("filter.category.all"),
+                                isOn: filter.categoryIDs.isEmpty,
+                                isMuted: true
+                            )
                         }
-                        .pickerStyle(.inline)
-                        .labelsHidden()
+                        .buttonStyle(.plain)
+
+                        ForEach(categories) { category in
+                            Button {
+                                filter.toggleCategory(category.id)
+                            } label: {
+                                categoryRow(
+                                    title: Text(category.name),
+                                    isOn: filter.categoryIDs.contains(category.id)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } header: {
+                        Text("filter.section.category")
+                    } footer: {
+                        Text("filter.category.footer")
                     }
                 }
 
@@ -91,7 +123,7 @@ struct FilterView: View {
     @Previewable @State var filter = ReceiptFilter(
         preset: .thisQuarter,
         searchText: "coffee",
-        categoryID: PreviewFixture.primaryCategoryID
+        categoryIDs: [PreviewFixture.primaryCategoryID, PreviewFixture.categoryIDs[1]]
     )
     return FilterView(filter: $filter).previewLibrary()
 }

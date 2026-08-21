@@ -17,7 +17,7 @@ import SwiftData
 /// | Sentinel | Rows matched |
 /// |---|---|
 /// | `distantPast ..< distantFuture` | all — works |
-/// | `matchesAnyCategory \|\| categoryID == wanted` | all — works |
+/// | `matchesAnyCategory \|\| selected.contains(categoryID)` | all — works |
 /// | `searchIndex.localizedStandardContains("")` | **none** — does not work |
 ///
 /// Swift's `contains("")` is true, but SwiftData translates it to a store `CONTAINS`,
@@ -29,26 +29,35 @@ import SwiftData
 /// (see `ReceiptSearchIndex`), and category matching through the denormalised `categoryID`
 /// rather than a relationship — the type checker gave up on the optional-heavy version of
 /// this predicate once already.
+///
+/// Category membership captures `[UUID?]`, not `[UUID]` or a `Set`: `categoryID` is
+/// optional, and the closure form (`selected.contains { $0 == receipt.categoryID }`) does
+/// not compile at all inside `#Predicate`. An array of optionals compares like for like
+/// and translates into an `IN` query.
 enum ReceiptPredicateFactory {
 
+    /// - Parameter categoryIDs: categories to include. Empty means every category,
+    ///   including uncategorised receipts.
     static func makePredicate(
         interval: DateInterval?,
         searchText: String,
-        categoryID: UUID? = nil
+        categoryIDs: Set<UUID> = []
     ) -> Predicate<Receipt> {
         // Resolved into plain values before the macro sees them: a `#Predicate` body
         // captures values, never expressions it would have to evaluate against the store.
         let lower = interval?.start ?? .distantPast
         let upper = interval?.end ?? .distantFuture
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let wantedCategory = categoryID
-        let matchesAnyCategory = categoryID == nil
+        // An empty selection cannot be expressed as an empty `IN` list -- that matches
+        // nothing rather than everything -- so it is short-circuited by a captured Bool.
+        let selected: [UUID?] = categoryIDs.map { $0 }
+        let matchesAnyCategory = categoryIDs.isEmpty
 
         guard !query.isEmpty else {
             return #Predicate<Receipt> { receipt in
                 receipt.capturedAt >= lower
                     && receipt.capturedAt < upper
-                    && (matchesAnyCategory || receipt.categoryID == wantedCategory)
+                    && (matchesAnyCategory || selected.contains(receipt.categoryID))
             }
         }
 
@@ -56,7 +65,7 @@ enum ReceiptPredicateFactory {
             receipt.capturedAt >= lower
                 && receipt.capturedAt < upper
                 && receipt.searchIndex.localizedStandardContains(query)
-                && (matchesAnyCategory || receipt.categoryID == wantedCategory)
+                && (matchesAnyCategory || selected.contains(receipt.categoryID))
         }
     }
 }
