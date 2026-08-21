@@ -27,7 +27,8 @@ struct ReceiptPredicateFactoryTests {
         merchant: String? = nil,
         note: String? = nil,
         ocrText: String? = nil,
-        categoryID: UUID? = nil
+        categoryID: UUID? = nil,
+        needsReview: Bool = false
     ) -> Receipt {
         let receipt = Receipt(
             capturedAt: TestCalendar.date(year: 2026, month: month, day: day),
@@ -36,6 +37,7 @@ struct ReceiptPredicateFactoryTests {
             note: note,
             ocrText: ocrText,
             categoryID: categoryID,
+            needsReview: needsReview,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: ocrText)
         )
         context.insert(receipt)
@@ -45,12 +47,14 @@ struct ReceiptPredicateFactoryTests {
     private func fetch(
         interval: DateInterval? = nil,
         searchText: String = "",
-        categoryIDs: Set<UUID> = []
+        categoryIDs: Set<UUID> = [],
+        needsReviewOnly: Bool = false
     ) throws -> [Receipt] {
         try context.fetch(
             FetchDescriptor<Receipt>(
                 predicate: ReceiptPredicateFactory.makePredicate(
-                    interval: interval, searchText: searchText, categoryIDs: categoryIDs
+                    interval: interval, searchText: searchText,
+                    categoryIDs: categoryIDs, needsReviewOnly: needsReviewOnly
                 )
             )
         )
@@ -206,6 +210,35 @@ struct ReceiptPredicateFactoryTests {
 
         #expect(results.count == 1)
         #expect(results.first?.capturedAt == TestCalendar.date(year: 2026, month: 4, day: 5))
+    }
+
+    @Test("The needs-review filter narrows to unconfirmed receipts")
+    func filtersByNeedsReview() throws {
+        insert(day: 1, needsReview: true)
+        insert(day: 2, needsReview: true)
+        insert(day: 3)
+
+        #expect(try fetch(needsReviewOnly: true).count == 2)
+    }
+
+    @Test("Leaving the needs-review filter off returns everything")
+    func needsReviewOffReturnsEverything() throws {
+        insert(day: 1, needsReview: true)
+        insert(day: 2)
+
+        #expect(try fetch(needsReviewOnly: false).count == 2)
+    }
+
+    @Test("Needs-review combines with the other filters")
+    func needsReviewCombines() throws {
+        let wanted = UUID()
+        insert(day: 1, categoryID: wanted, needsReview: true)
+        insert(day: 2, categoryID: wanted)
+        insert(day: 3, needsReview: true)
+
+        let results = try fetch(categoryIDs: [wanted], needsReviewOnly: true)
+
+        #expect(results.count == 1)
     }
 
     @Test("A query matching nothing returns nothing")

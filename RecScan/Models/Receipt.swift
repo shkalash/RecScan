@@ -55,6 +55,14 @@ final class Receipt {
     /// Position within a multi-page group. Always `0` for single-page receipts.
     var pageIndex: Int = 0
 
+    /// Whether the details still want confirming.
+    ///
+    /// Set when a receipt is created and cleared once its details are confirmed, so
+    /// dismissing a review sheet leaves the prompt standing rather than losing it. Rows
+    /// already in the library default to `false`, so adding this does not light up a
+    /// library that was fine.
+    var needsReview: Bool = false
+
     /// The category this receipt belongs to, or `nil` for uncategorised.
     ///
     /// A plain identifier rather than a relationship — see `ReceiptCategory`.
@@ -80,6 +88,7 @@ final class Receipt {
         groupID: UUID? = nil,
         pageIndex: Int = 0,
         categoryID: UUID? = nil,
+        needsReview: Bool = false,
         searchIndex: String = ""
     ) {
         self.id = id
@@ -95,6 +104,7 @@ final class Receipt {
         self.groupID = groupID
         self.pageIndex = pageIndex
         self.categoryID = categoryID
+        self.needsReview = needsReview
         self.searchIndex = searchIndex
     }
 }

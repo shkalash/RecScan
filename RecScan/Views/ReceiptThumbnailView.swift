@@ -22,7 +22,7 @@ struct ReceiptThumbnailView: View {
     @State private var thumbnail: UIImage?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
             // The thumbnail is already square and top-cropped (see
             // `ImageCodec.squareThumbnail`), so the tile needs no aspect-ratio logic at
             // all: `resizable()` plus an exact frame scales it to the tile and nothing
@@ -41,11 +41,22 @@ struct ReceiptThumbnailView: View {
                         )
                 }
 
+            // Review badge leading, selection trailing: both can be visible at once, and
+            // overlapping them would hide whichever drew first.
+            if receipt.needsReview {
+                Image(systemName: SystemImage.needsReview)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, Color.orange)
+                    .padding(LayoutMetrics.Grid.selectionBadgePadding)
+                    .accessibilityHidden(true)
+            }
+
             if isSelectionActive {
                 Image(systemName: isSelected ? SystemImage.selectionOn : SystemImage.selectionOff)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.white, isSelected ? Color.accentColor : Color.black.opacity(0.35))
                     .padding(LayoutMetrics.Grid.selectionBadgePadding)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .task(id: receipt.id) { await loadThumbnail() }
@@ -72,6 +83,12 @@ struct ReceiptThumbnailView: View {
 
     private var accessibilityLabel: Text {
         let date = ReceiptFormatting.receiptDate(for: receipt.capturedAt)
+        if receipt.needsReview {
+            guard let merchant = receipt.merchant, !merchant.isEmpty else {
+                return Text("library.item.accessibility.needsReview.dateOnly \(date)")
+            }
+            return Text("library.item.accessibility.needsReview.merchant \(merchant) \(date)")
+        }
         guard let merchant = receipt.merchant, !merchant.isEmpty else {
             return Text("library.item.accessibility.dateOnly \(date)")
         }
@@ -105,9 +122,20 @@ struct ReceiptThumbnailView: View {
     .padding()
 }
 
-#Preview("Tile — selected") {
+#Preview("Tile — needs review") {
     ReceiptThumbnailView(
-        receipt: PreviewFixture.receipt,
+        receipt: PreviewFixture.makeReceipt(index: 1, needsReview: true),
+        isSelectionActive: false,
+        isSelected: false,
+        side: 96
+    )
+    .previewLibrary()
+    .padding()
+}
+
+#Preview("Tile — selected and unreviewed") {
+    ReceiptThumbnailView(
+        receipt: PreviewFixture.makeReceipt(index: 2, needsReview: true),
         isSelectionActive: true,
         isSelected: true,
         side: 96

@@ -109,7 +109,8 @@ enum PreviewFixture {
         note: String? = nil,
         pageIndex: Int = 0,
         groupID: UUID? = nil,
-        categoryID: UUID? = nil
+        categoryID: UUID? = nil,
+        needsReview: Bool = false
     ) -> Receipt {
         let id = UUID()
         let relativePath = (try? imageFileStore.write(SampleReceiptImage.make(index: index), for: id))
@@ -128,6 +129,7 @@ enum PreviewFixture {
             groupID: groupID,
             pageIndex: pageIndex,
             categoryID: categoryID,
+            needsReview: needsReview,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: nil)
         )
     }
@@ -140,7 +142,9 @@ enum PreviewFixture {
             makeReceipt(
                 index: index,
                 daysAgo: index * 9,
-                categoryID: index == 2 ? nil : categoryIDs[index % categoryIDs.count]
+                categoryID: index == 2 ? nil : categoryIDs[index % categoryIDs.count],
+                // A couple flagged, so the badge and the filter both have something to show.
+                needsReview: index % 3 == 1
             )
         }
     }

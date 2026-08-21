@@ -14,24 +14,28 @@ struct ReceiptFilter: Hashable, Sendable {
     /// Categories to include. Empty means every category, which is also what the
     /// "All Categories" row selects — clearing rather than being a value of its own.
     var categoryIDs: Set<UUID>
+    /// Narrows to receipts whose details have not been confirmed yet.
+    var needsReviewOnly: Bool
 
     init(
         preset: DateRangePreset = .allTime,
         customStart: Date = Date(),
         customEnd: Date = Date(),
         searchText: String = "",
-        categoryIDs: Set<UUID> = []
+        categoryIDs: Set<UUID> = [],
+        needsReviewOnly: Bool = false
     ) {
         self.preset = preset
         self.customStart = customStart
         self.customEnd = customEnd
         self.searchText = searchText
         self.categoryIDs = categoryIDs
+        self.needsReviewOnly = needsReviewOnly
     }
 
     /// Whether the filter narrows the library at all. Drives the toolbar badge.
     var isActive: Bool {
-        preset != .allTime || !trimmedSearchText.isEmpty || !categoryIDs.isEmpty
+        preset != .allTime || !trimmedSearchText.isEmpty || !categoryIDs.isEmpty || needsReviewOnly
     }
 
     /// Whether `id` is included. An empty selection includes everything.

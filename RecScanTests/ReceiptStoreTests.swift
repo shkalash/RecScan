@@ -63,6 +63,32 @@ extension ImagePipelineSuite {
             #expect(paths.allSatisfy { directory.fileExists(atRelativePath: $0) })
         }
 
+        @Test("A new receipt starts flagged for review")
+        func newReceiptNeedsReview() async throws {
+            _ = try await store.importScan(pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now)
+
+            #expect(try fetchAll().first?.needsReview == true)
+        }
+
+        @Test("Confirming a receipt's details clears the flag")
+        func editingClearsNeedsReview() async throws {
+            let id = try #require(try await store.importScan(
+                pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now
+            ).first)
+
+            try await store.apply(
+                ReceiptEdit(
+                    capturedAt: .now, merchant: "Corner Store", amount: nil,
+                    currencyCode: nil, note: nil, categoryID: nil
+                ),
+                toReceiptWithID: id
+            )
+
+            // Editing is the act of confirming, so the badge clears here as well as from
+            // the review sheet -- a flag with only one way out is a flag that sticks.
+            #expect(try fetchAll().first?.needsReview == false)
+        }
+
         @Test("An empty scan is rejected")
         func rejectsEmptyImports() async {
             await #expect(throws: ReceiptStoreError.emptyImportRequest) {

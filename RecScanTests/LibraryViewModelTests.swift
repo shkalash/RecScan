@@ -82,7 +82,8 @@ struct LibraryViewModelTests {
             ocrText: nil,
             groupID: nil,
             pageIndex: 0,
-            categoryID: nil
+            categoryID: nil,
+            needsReview: false
         )
     }
 

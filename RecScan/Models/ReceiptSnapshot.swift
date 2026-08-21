@@ -24,6 +24,7 @@ struct ReceiptSnapshot: Sendable, Identifiable, Hashable {
     let groupID: UUID?
     let pageIndex: Int
     let categoryID: UUID?
+    let needsReview: Bool
 }
 
 extension ReceiptSnapshot {
@@ -41,7 +42,8 @@ extension ReceiptSnapshot {
             ocrText: receipt.ocrText,
             groupID: receipt.groupID,
             pageIndex: receipt.pageIndex,
-            categoryID: receipt.categoryID
+            categoryID: receipt.categoryID,
+            needsReview: receipt.needsReview
         )
     }
 }

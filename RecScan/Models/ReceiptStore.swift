@@ -57,7 +57,8 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
                 modifiedAt: now,
                 relativePath: relativePath,
                 groupID: groupID,
-                pageIndex: index
+                pageIndex: index,
+                needsReview: true
             )
             modelContext.insert(receipt)
             createdIDs.append(id)
@@ -89,6 +90,9 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             ocrText: receipt.ocrText
         )
         receipt.modifiedAt = Date()
+        // Editing a receipt is the act of confirming it, so the prompt clears here as
+        // well as from the review sheet -- otherwise a badge could only be cleared one way.
+        receipt.needsReview = false
 
         try modelContext.save()
     }

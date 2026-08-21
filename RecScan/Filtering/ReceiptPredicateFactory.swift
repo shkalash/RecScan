@@ -41,7 +41,8 @@ enum ReceiptPredicateFactory {
     static func makePredicate(
         interval: DateInterval?,
         searchText: String,
-        categoryIDs: Set<UUID> = []
+        categoryIDs: Set<UUID> = [],
+        needsReviewOnly: Bool = false
     ) -> Predicate<Receipt> {
         // Resolved into plain values before the macro sees them: a `#Predicate` body
         // captures values, never expressions it would have to evaluate against the store.
@@ -52,12 +53,16 @@ enum ReceiptPredicateFactory {
         // nothing rather than everything -- so it is short-circuited by a captured Bool.
         let selected: [UUID?] = categoryIDs.map { $0 }
         let matchesAnyCategory = categoryIDs.isEmpty
+        // Same short-circuit shape as the category sentinel, so this filter costs a term
+        // rather than doubling the number of literals.
+        let onlyUnreviewed = needsReviewOnly
 
         guard !query.isEmpty else {
             return #Predicate<Receipt> { receipt in
                 receipt.capturedAt >= lower
                     && receipt.capturedAt < upper
                     && (matchesAnyCategory || selected.contains(receipt.categoryID))
+                    && (!onlyUnreviewed || receipt.needsReview)
             }
         }
 
@@ -66,6 +71,7 @@ enum ReceiptPredicateFactory {
                 && receipt.capturedAt < upper
                 && receipt.searchIndex.localizedStandardContains(query)
                 && (matchesAnyCategory || selected.contains(receipt.categoryID))
+                && (!onlyUnreviewed || receipt.needsReview)
         }
     }
 }

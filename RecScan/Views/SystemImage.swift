@@ -24,4 +24,5 @@ enum SystemImage {
     static let addCategory = "plus.circle"
     static let category = "tag"
     static let chevron = "chevron.right"
+    static let needsReview = "exclamationmark.circle.fill"
 }

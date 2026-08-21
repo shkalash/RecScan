@@ -31,6 +31,12 @@ struct ReceiptFilterTests {
         #expect(!ReceiptFilter(categoryIDs: []).isActive)
     }
 
+    @Test("The needs-review filter activates the badge")
+    func needsReviewActivatesFilter() {
+        #expect(ReceiptFilter(needsReviewOnly: true).isActive)
+        #expect(!ReceiptFilter(needsReviewOnly: false).isActive)
+    }
+
     @Test("Toggling adds and removes categories")
     func togglingCategories() {
         var filter = ReceiptFilter()

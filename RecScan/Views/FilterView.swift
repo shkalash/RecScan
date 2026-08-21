@@ -89,6 +89,12 @@ struct FilterView: View {
                 }
 
                 Section {
+                    Toggle("filter.needsReview", isOn: $filter.needsReviewOnly)
+                } footer: {
+                    Text("filter.needsReview.footer")
+                }
+
+                Section {
                     TextField("filter.search.placeholder", text: $filter.searchText)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -123,7 +129,8 @@ struct FilterView: View {
     @Previewable @State var filter = ReceiptFilter(
         preset: .thisQuarter,
         searchText: "coffee",
-        categoryIDs: [PreviewFixture.primaryCategoryID, PreviewFixture.categoryIDs[1]]
+        categoryIDs: [PreviewFixture.primaryCategoryID, PreviewFixture.categoryIDs[1]],
+        needsReviewOnly: true
     )
     return FilterView(filter: $filter).previewLibrary()
 }

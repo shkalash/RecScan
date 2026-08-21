@@ -838,6 +838,28 @@
         }
       }
     },
+    "filter.needsReview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs review only"
+          }
+        }
+      }
+    },
+    "filter.needsReview.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receipts whose details you have not confirmed yet. They are marked with a dot in the library."
+          }
+        }
+      }
+    },
     "filter.preset.allTime": {
       "extractionState": "manual",
       "localizations": {
@@ -1187,6 +1209,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Receipt from %1$@ on %2$@"
+          }
+        }
+      }
+    },
+    "library.item.accessibility.needsReview.dateOnly %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receipt from %@, needs review"
+          }
+        }
+      }
+    },
+    "library.item.accessibility.needsReview.merchant %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receipt from %1$@ on %2$@, needs review"
           }
         }
       }
