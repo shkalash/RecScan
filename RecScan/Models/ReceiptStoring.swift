@@ -22,6 +22,14 @@ protocol ReceiptStoring: Sendable {
     @discardableResult
     func importScan(pages: [UIImage], capturedAt: Date) async throws -> [UUID]
 
+    /// Persists images brought in from Photos, Files or a shared document.
+    ///
+    /// Unlike a scan, each item carries its own date, so a batch keeps the dates its
+    /// sources knew rather than all landing on today.
+    /// - Returns: the identifiers of the created receipts, in order.
+    @discardableResult
+    func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID]
+
     /// Commits edited metadata to the receipt with the given identifier.
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws
 

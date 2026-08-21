@@ -1,6 +1,9 @@
 import Foundation
 import Observation
+import PhotosUI
+import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// State and actions for the receipt library screen.
 ///
@@ -39,6 +42,9 @@ final class LibraryViewModel {
     var isPresentingExport = false
     var isPresentingArchiveExport = false
     var isPresentingArchiveImporter = false
+    var isPresentingPhotoPicker = false
+    var isPresentingFileImporter = false
+    var photoSelection: [PhotosPickerItem] = []
     var isPresentingSettings = false
     var importResult: ArchiveImportResult?
     /// Newly added receipts awaiting their details. Empty dismisses the sheet.
@@ -124,6 +130,71 @@ final class LibraryViewModel {
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.deleteFailed, error: error)
         }
+    }
+
+    // MARK: - Importing files and photos
+
+    /// Imports photos chosen in the system picker.
+    ///
+    /// Loaded as `Data` rather than `Image` so the original bytes — and therefore the EXIF
+    /// capture date — survive; a transferable `Image` arrives re-rendered and undated.
+    func importPickedPhotos(_ selection: [PhotosPickerItem], using store: any ReceiptStoring) async {
+        guard !selection.isEmpty else { return }
+        isImporting = true
+        defer {
+            isImporting = false
+            photoSelection = []
+        }
+
+        var items: [ReceiptImportItem] = []
+        for picked in selection {
+            guard let data = try? await picked.loadTransferable(type: Data.self) else { continue }
+            items.append(contentsOf: ReceiptImportReader.items(from: data, isPDF: false))
+        }
+        await finishImport(of: items, using: store)
+    }
+
+    /// Imports files chosen in the document picker, or handed over by another app.
+    func importFiles(at urls: [URL], using store: any ReceiptStoring, isInbox: Bool = false) async {
+        guard !urls.isEmpty else { return }
+        isImporting = true
+        defer { isImporting = false }
+
+        var items: [ReceiptImportItem] = []
+        for url in urls {
+            // A picked URL is security-scoped and unreadable until access is started.
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+            items.append(contentsOf: ReceiptImportReader.items(atFileURL: url))
+            if isInbox { try? FileManager.default.removeItem(at: url) }
+        }
+        await finishImport(of: items, using: store)
+    }
+
+    /// Saves the items and opens review over exactly what was created.
+    private func finishImport(of items: [ReceiptImportItem], using store: any ReceiptStoring) async {
+        guard !items.isEmpty else {
+            presentedError = PresentableError(
+                titleKey: ErrorTitle.importFailed, error: ReceiptStoreError.emptyImportRequest
+            )
+            return
+        }
+
+        do {
+            let created = try await store.importItems(items)
+            let all = try await store.allReceipts()
+            let ids = Set(created)
+            pendingReview = all.filter { ids.contains($0.id) }
+        } catch {
+            presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
+        }
+    }
+
+    /// Whether a handed-over file is something this app should act on.
+    func canImport(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return type.conforms(to: .image) || type.conforms(to: .pdf)
     }
 
     // MARK: - Archive

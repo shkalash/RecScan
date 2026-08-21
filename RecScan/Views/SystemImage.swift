@@ -25,4 +25,6 @@ enum SystemImage {
     static let category = "tag"
     static let chevron = "chevron.right"
     static let needsReview = "exclamationmark.circle.fill"
+    static let photos = "photo.on.rectangle"
+    static let files = "folder"
 }

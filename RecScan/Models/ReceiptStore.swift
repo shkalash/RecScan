@@ -69,6 +69,47 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         return createdIDs
     }
 
+    // MARK: - Import from files
+
+    @discardableResult
+    func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID] {
+        guard !items.isEmpty else { throw ReceiptStoreError.emptyImportRequest }
+
+        var createdIDs: [UUID] = []
+        createdIDs.reserveCapacity(items.count)
+
+        for item in items {
+            let id = UUID()
+            // Same order as capture: file first, so a failed save leaves a stray file
+            // rather than a row pointing at nothing.
+            let relativePath = try fileStore.write(item.image, for: id)
+            let now = Date()
+
+            let receipt = Receipt(
+                id: id,
+                capturedAt: item.capturedAt,
+                createdAt: now,
+                modifiedAt: now,
+                relativePath: relativePath,
+                ocrText: item.ocrText,
+                groupID: item.groupID,
+                pageIndex: item.pageIndex,
+                // Only flagged when the date had to be guessed: a batch of photos that all
+                // carry EXIF dates should leave nothing needing attention.
+                needsReview: !item.dateIsCertain,
+                searchIndex: ReceiptSearchIndex.make(
+                    merchant: nil, note: nil, ocrText: item.ocrText
+                )
+            )
+            modelContext.insert(receipt)
+            createdIDs.append(id)
+        }
+
+        try modelContext.save()
+        logger.info("Imported \(createdIDs.count, privacy: .public) item(s) from files.")
+        return createdIDs
+    }
+
     // MARK: - Edit
 
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {

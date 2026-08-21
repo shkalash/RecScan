@@ -1047,6 +1047,28 @@
         }
       }
     },
+    "library.action.importFiles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import Files…"
+          }
+        }
+      }
+    },
+    "library.action.importPhotos": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import from Photos…"
+          }
+        }
+      }
+    },
     "library.action.more": {
       "extractionState": "manual",
       "localizations": {

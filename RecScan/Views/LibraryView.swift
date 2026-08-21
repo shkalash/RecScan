@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -60,11 +61,31 @@ struct LibraryView: View {
             guard case .success(let url) = outcome else { return }
             Task { await model.importArchive(at: url, using: receiptStore) }
         }
+        .fileImporter(
+            isPresented: $model.isPresentingFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { outcome in
+            guard case .success(let urls) = outcome else { return }
+            Task { await model.importFiles(at: urls, using: receiptStore) }
+        }
+        .photosPicker(
+            isPresented: $model.isPresentingPhotoPicker,
+            selection: $model.photoSelection,
+            maxSelectionCount: nil,
+            matching: .images
+        )
+        .onChange(of: model.photoSelection) { _, selection in
+            Task { await model.importPickedPhotos(selection, using: receiptStore) }
+        }
         .onOpenURL { url in
-            // AirDrop and "Open with" copy the file into Documents/Inbox and hand us
-            // the copy, so it is ours to delete once merged.
-            guard model.canHandle(url) else { return }
-            Task { await model.importArchive(at: url, using: receiptStore, isInbox: true) }
+            // AirDrop and "Open with" copy the file into Documents/Inbox and hand us the
+            // copy, so it is ours to delete once consumed.
+            if model.canHandle(url) {
+                Task { await model.importArchive(at: url, using: receiptStore, isInbox: true) }
+            } else if model.canImport(url) {
+                Task { await model.importFiles(at: [url], using: receiptStore, isInbox: true) }
+            }
         }
         .confirmationDialog(
             "library.delete.confirm.title",
@@ -137,6 +158,17 @@ struct LibraryView: View {
                 .disabled(!VNDocumentCameraViewController.isSupported)
 
                 Menu {
+                    Button {
+                        model.isPresentingPhotoPicker = true
+                    } label: {
+                        Label("library.action.importPhotos", systemImage: SystemImage.photos)
+                    }
+                    Button {
+                        model.isPresentingFileImporter = true
+                    } label: {
+                        Label("library.action.importFiles", systemImage: SystemImage.files)
+                    }
+                    Divider()
                     Button {
                         model.isPresentingArchiveExport = true
                     } label: {

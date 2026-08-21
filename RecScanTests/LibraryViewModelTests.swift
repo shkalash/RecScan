@@ -29,6 +29,13 @@ private actor SpyReceiptStore: ReceiptStoring {
         return pages.map { _ in UUID() }
     }
 
+    @discardableResult
+    func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID] {
+        importedPageCounts.append(items.count)
+        if case .fail(let error) = behaviour { throw error }
+        return items.map { _ in UUID() }
+    }
+
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {
         if case .fail(let error) = behaviour { throw error }
     }
