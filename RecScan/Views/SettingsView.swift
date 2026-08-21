@@ -61,6 +61,6 @@ struct SettingsView: View {
 
 #if DEBUG
 #Preview("Settings") {
-    SettingsView()
+    SettingsView().previewLibrary()
 }
 #endif

@@ -48,6 +48,35 @@ extension ImagePipelineSuite {
             #expect(months.count > 1)
         }
 
+        @Test("The preview library has categories, so category rows are not all empty")
+        func containerHasCategories() throws {
+            // The failure this exists for: a fixture with no categories still renders,
+            // as "None" everywhere, which looks plausible and shows nothing useful.
+            let context = ModelContext(PreviewFixture.container)
+            let categories = try context.fetch(FetchDescriptor<ReceiptCategory>())
+
+            #expect(categories.count > 1)
+            #expect(categories.allSatisfy { !$0.name.isEmpty })
+        }
+
+        @Test("The detail preview's receipt resolves to a real category")
+        func detailReceiptIsCategorised() throws {
+            let context = ModelContext(PreviewFixture.container)
+            let categories = try context.fetch(FetchDescriptor<ReceiptCategory>())
+
+            let assigned = try #require(PreviewFixture.receipt.categoryID)
+            #expect(categories.contains { $0.id == assigned })
+        }
+
+        @Test("Seeded receipts cover both categorised and uncategorised")
+        func bothCategoryStatesArePresent() throws {
+            let context = ModelContext(PreviewFixture.container)
+            let receipts = try context.fetch(FetchDescriptor<Receipt>())
+
+            #expect(receipts.contains { $0.categoryID != nil })
+            #expect(receipts.contains { $0.categoryID == nil })
+        }
+
         @Test("Grid tiles come out square, which is what the tile preview shows")
         func fixtureThumbnailIsSquare() throws {
             let receipt = PreviewFixture.makeReceipt(index: 3)

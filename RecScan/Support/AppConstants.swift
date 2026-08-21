@@ -22,6 +22,13 @@ enum AppConstants {
         private static let fallbackSubsystem = "RecScan"
     }
 
+    /// Timings for interactions that must wait on a presentation animation.
+    enum Interaction {
+        /// Delay before requesting focus inside a freshly presented popover or sheet.
+        /// Short enough to feel immediate, long enough that the field is in the window.
+        static let focusDelayMilliseconds = 350
+    }
+
     /// Formatting values shared by the library, detail and export layers.
     enum Format {
         /// Timestamp fragment used when naming generated export files.

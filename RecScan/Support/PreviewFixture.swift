@@ -40,6 +40,22 @@ enum PreviewFixture {
         )
     }()
 
+    // MARK: - Categories
+
+    /// Names the previews are seeded with.
+    static let categoryNames = ["Groceries", "Fuel", "Office", "Meals"]
+
+    /// Stable ids so a receipt's `categoryID` resolves against the seeded container.
+    static let categoryIDs: [UUID] = categoryNames.map { _ in UUID() }
+
+    /// The category assigned to `PreviewFixture.receipt`, so the detail preview shows a
+    /// populated row rather than "None".
+    static var primaryCategoryID: UUID { categoryIDs[0] }
+
+    private static func makeCategories() -> [ReceiptCategory] {
+        zip(categoryIDs, categoryNames).map { ReceiptCategory(id: $0, name: $1) }
+    }
+
     // MARK: - Library
 
     /// An in-memory container already holding `receiptCount` receipts.
@@ -48,6 +64,9 @@ enum PreviewFixture {
             fatalError("Preview container could not be created")
         }
         let context = ModelContext(container)
+        // Categories first: a receipt's categoryID has to resolve against rows that are
+        // already there, or every category row in a preview reads "None".
+        for category in makeCategories() { context.insert(category) }
         for receipt in makeReceipts() { context.insert(receipt) }
         try? context.save()
         return container
@@ -69,7 +88,8 @@ enum PreviewFixture {
         amount: Decimal? = Decimal(string: "42.50"),
         note: String? = nil,
         pageIndex: Int = 0,
-        groupID: UUID? = nil
+        groupID: UUID? = nil,
+        categoryID: UUID? = nil
     ) -> Receipt {
         let id = UUID()
         let relativePath = (try? imageFileStore.write(SampleReceiptImage.make(index: index), for: id))
@@ -87,17 +107,26 @@ enum PreviewFixture {
             note: note,
             groupID: groupID,
             pageIndex: pageIndex,
+            categoryID: categoryID,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: nil)
         )
     }
 
     /// A spread of receipts across several months, so month sectioning is visible.
     static func makeReceipts(count: Int = receiptCount) -> [Receipt] {
-        (0..<count).map { makeReceipt(index: $0, daysAgo: $0 * 9) }
+        // Spread across categories, with one deliberately uncategorised so previews show
+        // both states side by side.
+        (0..<count).map { index in
+            makeReceipt(
+                index: index,
+                daysAgo: index * 9,
+                categoryID: index == 2 ? nil : categoryIDs[index % categoryIDs.count]
+            )
+        }
     }
 
     /// A single receipt, for the detail and thumbnail previews.
-    static let receipt: Receipt = makeReceipt(index: 0)
+    static let receipt: Receipt = makeReceipt(index: 0, categoryID: primaryCategoryID)
 
     static func snapshots(count: Int = 4) -> [ReceiptSnapshot] {
         makeReceipts(count: count).map(ReceiptSnapshot.init)

@@ -12,9 +12,10 @@ import SwiftUI
 /// system menu, which does not accept text input. A popover carrying a real list is the
 /// only way to type a new name in the same gesture that picks an existing one.
 ///
-/// The field is deliberately **not** auto-focused: opening the dropdown to pick an
-/// existing category is the common case, and raising the keyboard every time would make
-/// that worse to serve the rarer one.
+/// The field takes focus as the popover opens, so typing a new category needs no extra
+/// tap. Focus is requested after a short hop rather than in `onAppear`: until the
+/// presentation animation finishes the field is not yet in the window, and a focus
+/// request that lands early is silently dropped.
 struct CategoryPicker: View {
 
     @Binding var selection: UUID?
@@ -25,6 +26,7 @@ struct CategoryPicker: View {
     @State private var isPresented = false
     @State private var newName = ""
     @State private var presentedError: PresentableError?
+    @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
         Button {
@@ -56,6 +58,7 @@ struct CategoryPicker: View {
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
                         .submitLabel(.done)
+                        .focused($isNameFieldFocused)
                         .onSubmit { Task { await create() } }
                 }
             }
@@ -81,6 +84,10 @@ struct CategoryPicker: View {
             }
         }
         .listStyle(.plain)
+        .task {
+            try? await Task.sleep(for: .milliseconds(AppConstants.Interaction.focusDelayMilliseconds))
+            isNameFieldFocused = true
+        }
     }
 
     private func row(title: Text, isSelected: Bool, isMuted: Bool = false) -> some View {
@@ -115,6 +122,7 @@ struct CategoryPicker: View {
         do {
             selection = try await receiptStore.createCategory(named: name)
             newName = ""
+            isNameFieldFocused = false
             isPresented = false
         } catch {
             presentedError = PresentableError(titleKey: "error.category.create.title", error: error)
@@ -123,7 +131,15 @@ struct CategoryPicker: View {
 }
 
 #if DEBUG
-#Preview("Category picker") {
+#Preview("Category picker — populated") {
+    @Previewable @State var selection: UUID? = PreviewFixture.primaryCategoryID
+    return Form {
+        CategoryPicker(selection: $selection)
+    }
+    .previewLibrary()
+}
+
+#Preview("Category picker — none selected") {
     @Previewable @State var selection: UUID?
     return Form {
         CategoryPicker(selection: $selection)

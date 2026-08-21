@@ -229,9 +229,16 @@ struct ReceiptDetailView: View {
 }
 
 #if DEBUG
-#Preview("Detail") {
+#Preview("Detail — categorised") {
     NavigationStack {
         ReceiptDetailView(receipt: PreviewFixture.receipt)
+    }
+    .previewLibrary()
+}
+
+#Preview("Detail — uncategorised") {
+    NavigationStack {
+        ReceiptDetailView(receipt: PreviewFixture.makeReceipt(index: 4, amount: nil))
     }
     .previewLibrary()
 }
