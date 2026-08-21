@@ -47,6 +47,9 @@ Package.resolved
 *.xcconfig.local
 secrets.plist
 
+# Generated icon renders
+Tools/IconGenerator/out/
+
 # Editors
 .idea/
 *.swp
