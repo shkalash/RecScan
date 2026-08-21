@@ -32,9 +32,10 @@ playground.xcworkspace
 .swiftpm/
 
 # Swift Package Manager
+# Package.resolved is deliberately NOT ignored: this is an app, not a library, so the
+# resolved versions are part of the build and must be reproducible from a fresh clone.
 .build/
 Packages/
-Package.resolved
 
 # Provisioning / signing — never commit these
 *.mobileprovision
