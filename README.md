@@ -111,6 +111,24 @@ concurrent `CGImageDestinationFinalize` calls finish in about a tenth of a secon
 while twelve deadlock permanently and hang the whole run. The app never hits this — its
 only image writer is a serial actor — but the test suite fans out unless told not to.
 
+## Getting receipts in
+
+Four routes, all landing in the same review sheet:
+
+- **Scan** with the document camera (device only — the Simulator has none)
+- **Import from Photos** — multi-select, out-of-process, so there is still no photo
+  library permission prompt
+- **Import Files** — images and PDFs, multi-select
+- **Share to RecScan** from any other app, via the share extension
+
+A PDF becomes one receipt per page, sharing a group the way a multi-page scan does, and
+its embedded text goes straight into `ocrText` — for an e-receipt that is real text, and
+better than OCR over a picture of it.
+
+Capture dates come from EXIF, then the file's creation date, then today. Only the last is
+treated as a guess, and only a guess flags the receipt for review — importing photos that
+all carry EXIF leaves nothing needing attention.
+
 ## Backup and restore
 
 **Export Archive** writes a zip of the original images plus `manifest.json`. Both halves
@@ -144,8 +162,16 @@ same archive twice is a no-op the second time.
 Capture, storage, library, detail editing, filtering, PDF export and archive
 import/export are implemented.
 
-Not yet built: OCR autofill and Face ID lock. `Receipt.ocrText` and the PDF's invisible
-searchable-text layer are already wired for the first of those.
+Not yet built: OCR autofill for scanned images, Face ID lock, and per-category reports.
+`Receipt.ocrText` is already populated for PDFs and wired into search and the PDF's
+invisible searchable-text layer.
+
+### Share extension
+
+Needs an App Group, which a free Personal Team **can** provision — verified by reading the
+entitlement back out of a signed build rather than trusting the documentation. The group
+identifier appears in four places (both entitlements files, `SharedInbox`, and the
+extension's controller) and they must be changed together.
 
 ## Licence
 
