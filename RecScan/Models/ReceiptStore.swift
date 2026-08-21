@@ -80,6 +80,7 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         receipt.amount = edit.amount
         receipt.currencyCode = edit.currencyCode
         receipt.note = edit.note?.normalisedOrNil
+        receipt.categoryID = edit.categoryID
         // The derived search column is rewritten here and nowhere else, so it cannot
         // drift out of step with the fields it is built from.
         receipt.searchIndex = ReceiptSearchIndex.make(
@@ -115,6 +116,69 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         }
 
         try modelContext.save()
+    }
+
+    // MARK: - Categories
+
+    @discardableResult
+    func createCategory(named name: String) async throws -> UUID {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw ReceiptStoreError.emptyCategoryName }
+
+        // Typing a name that already exists selects it rather than creating a twin.
+        if let existing = try fetchCategory(matching: trimmed) { return existing.id }
+
+        let category = ReceiptCategory(name: trimmed)
+        modelContext.insert(category)
+        try modelContext.save()
+        return category.id
+    }
+
+    func renameCategory(id: UUID, to name: String) async throws {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw ReceiptStoreError.emptyCategoryName }
+        guard let category = try fetchCategory(id: id) else {
+            throw ReceiptStoreError.categoryNotFound(id: id)
+        }
+
+        category.name = trimmed
+        try modelContext.save()
+    }
+
+    func deleteCategory(id: UUID) async throws {
+        guard let category = try fetchCategory(id: id) else { return }
+
+        // Clear the id from its receipts first: a nil relationship would have been
+        // nullified for us, but a denormalised column has to be swept by hand.
+        let target = id
+        let holders = try modelContext.fetch(
+            FetchDescriptor<Receipt>(predicate: #Predicate { $0.categoryID == target })
+        )
+        for receipt in holders {
+            receipt.categoryID = nil
+            receipt.modifiedAt = Date()
+        }
+
+        modelContext.delete(category)
+        try modelContext.save()
+        logger.info("Deleted category, cleared from \(holders.count, privacy: .public) receipt(s).")
+    }
+
+    private func fetchCategory(id: UUID) throws -> ReceiptCategory? {
+        let target = id
+        var descriptor = FetchDescriptor<ReceiptCategory>(predicate: #Predicate { $0.id == target })
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    /// Case-insensitive lookup by name.
+    ///
+    /// Done in Swift rather than in the predicate: `#Predicate` has no case-insensitive
+    /// equality, and the category list is small enough that fetching it is free.
+    private func fetchCategory(matching name: String) throws -> ReceiptCategory? {
+        let key = ReceiptCategory.matchingKey(for: name)
+        return try modelContext.fetch(FetchDescriptor<ReceiptCategory>())
+            .first { ReceiptCategory.matchingKey(for: $0.name) == key }
     }
 
     // MARK: - Reading

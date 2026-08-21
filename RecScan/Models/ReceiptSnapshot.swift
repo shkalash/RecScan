@@ -23,6 +23,7 @@ struct ReceiptSnapshot: Sendable, Identifiable, Hashable {
     let ocrText: String?
     let groupID: UUID?
     let pageIndex: Int
+    let categoryID: UUID?
 }
 
 extension ReceiptSnapshot {
@@ -39,7 +40,8 @@ extension ReceiptSnapshot {
             note: receipt.note,
             ocrText: receipt.ocrText,
             groupID: receipt.groupID,
-            pageIndex: receipt.pageIndex
+            pageIndex: receipt.pageIndex,
+            categoryID: receipt.categoryID
         )
     }
 }

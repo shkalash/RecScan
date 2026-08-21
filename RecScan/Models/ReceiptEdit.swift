@@ -14,6 +14,7 @@ struct ReceiptEdit: Sendable, Equatable {
     var amount: Decimal?
     var currencyCode: String?
     var note: String?
+    var categoryID: UUID?
 }
 
 extension ReceiptEdit {
@@ -23,7 +24,8 @@ extension ReceiptEdit {
             merchant: receipt.merchant,
             amount: receipt.amount,
             currencyCode: receipt.currencyCode,
-            note: receipt.note
+            note: receipt.note,
+            categoryID: receipt.categoryID
         )
     }
 }

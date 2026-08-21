@@ -26,6 +26,11 @@ enum LayoutMetrics {
         static let doubleTapZoomScale: CGFloat = 3
     }
 
+    enum CategoryPicker {
+        /// Wide enough that category names are not truncated in the popover.
+        static let minimumWidth: CGFloat = 260
+    }
+
     enum Form {
         static let noteEditorMinimumHeight: CGFloat = 96
     }

@@ -28,6 +28,20 @@ protocol ReceiptStoring: Sendable {
     /// Deletes rows *and* their backing image files.
     func delete(receiptsWithIDs ids: [UUID]) async throws
 
+    /// Creates a category, or returns the existing one when the name already matches.
+    ///
+    /// - Returns: the identifier to select.
+    @discardableResult
+    func createCategory(named name: String) async throws -> UUID
+
+    func renameCategory(id: UUID, to name: String) async throws
+
+    /// Deletes a category and clears it from every receipt holding it.
+    ///
+    /// Both halves live here for the same reason row and file deletion do: split them and
+    /// receipts end up pointing at a category that no longer exists.
+    func deleteCategory(id: UUID) async throws
+
     /// Every receipt in the library, oldest first, ignoring any active filter.
     ///
     /// Archive export needs this: a backup taken through the library's filter would look

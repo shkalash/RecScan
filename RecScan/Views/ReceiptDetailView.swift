@@ -114,6 +114,8 @@ struct ReceiptDetailView: View {
                     Text(currencyBinding.wrappedValue).monospaced()
                 }
             }
+
+            CategoryPicker(selection: $edit.categoryID)
         }
     }
 

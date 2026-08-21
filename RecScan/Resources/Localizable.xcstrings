@@ -210,6 +210,61 @@
         }
       }
     },
+    "category.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No categories yet"
+          }
+        }
+      }
+    },
+    "category.list.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting a category keeps its receipts — they simply become uncategorised."
+          }
+        }
+      }
+    },
+    "category.new.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New category…"
+          }
+        }
+      }
+    },
+    "category.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        }
+      }
+    },
+    "category.rename.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Category"
+          }
+        }
+      }
+    },
     "common.cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -342,6 +397,17 @@
         }
       }
     },
+    "detail.field.category": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Category"
+          }
+        }
+      }
+    },
     "detail.field.currency": {
       "extractionState": "manual",
       "localizations": {
@@ -448,6 +514,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Could Not Import Archive"
+          }
+        }
+      }
+    },
+    "error.category.create.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Add Category"
+          }
+        }
+      }
+    },
+    "error.category.delete.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Delete Category"
+          }
+        }
+      }
+    },
+    "error.category.rename.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Rename Category"
           }
         }
       }
@@ -1214,6 +1313,17 @@
         }
       }
     },
+    "settings.categories.manage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Categories"
+          }
+        }
+      }
+    },
     "settings.currency.default": {
       "extractionState": "manual",
       "localizations": {
@@ -1232,6 +1342,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Used for receipts that do not have a currency of their own. Changing it updates those receipts everywhere, including in exports — nothing needs re-entering."
+          }
+        }
+      }
+    },
+    "settings.section.categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categories"
           }
         }
       }

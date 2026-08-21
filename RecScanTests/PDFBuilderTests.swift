@@ -42,7 +42,8 @@ extension ImagePipelineSuite {
                 note: nil,
                 ocrText: ocrText,
                 groupID: nil,
-                pageIndex: 0
+                pageIndex: 0,
+                categoryID: nil
             )
         }
 

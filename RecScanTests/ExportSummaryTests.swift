@@ -28,7 +28,8 @@ struct ExportSummaryTests {
             note: nil,
             ocrText: nil,
             groupID: nil,
-            pageIndex: 0
+            pageIndex: 0,
+            categoryID: nil
         )
     }
 

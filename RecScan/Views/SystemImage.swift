@@ -21,4 +21,7 @@ enum SystemImage {
     static let archiveImport = "arrow.down.doc"
     static let settings = "gearshape"
     static let checkmark = "checkmark"
+    static let addCategory = "plus.circle"
+    static let category = "tag"
+    static let chevron = "chevron.right"
 }

@@ -55,6 +55,11 @@ final class Receipt {
     /// Position within a multi-page group. Always `0` for single-page receipts.
     var pageIndex: Int = 0
 
+    /// The category this receipt belongs to, or `nil` for uncategorised.
+    ///
+    /// A plain identifier rather than a relationship — see `ReceiptCategory`.
+    var categoryID: UUID?
+
     /// Denormalised concatenation of `merchant`, `note` and `ocrText`.
     ///
     /// Written only by `ReceiptStore`. See `ReceiptSearchIndex` for why search does not
@@ -74,6 +79,7 @@ final class Receipt {
         ocrText: String? = nil,
         groupID: UUID? = nil,
         pageIndex: Int = 0,
+        categoryID: UUID? = nil,
         searchIndex: String = ""
     ) {
         self.id = id
@@ -88,6 +94,7 @@ final class Receipt {
         self.ocrText = ocrText
         self.groupID = groupID
         self.pageIndex = pageIndex
+        self.categoryID = categoryID
         self.searchIndex = searchIndex
     }
 }

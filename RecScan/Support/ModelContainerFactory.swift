@@ -11,7 +11,7 @@ import SwiftData
 enum ModelContainerFactory {
 
     /// Every `@Model` type the app persists.
-    static let schema = Schema([Receipt.self])
+    static let schema = Schema([Receipt.self, ReceiptCategory.self])
 
     /// Persistent container backing the running app.
     static func makeContainer() throws -> ModelContainer {

@@ -38,6 +38,20 @@ private actor SpyReceiptStore: ReceiptStoring {
         if case .fail(let error) = behaviour { throw error }
     }
 
+    @discardableResult
+    func createCategory(named name: String) async throws -> UUID {
+        if case .fail(let error) = behaviour { throw error }
+        return UUID()
+    }
+
+    func renameCategory(id: UUID, to name: String) async throws {
+        if case .fail(let error) = behaviour { throw error }
+    }
+
+    func deleteCategory(id: UUID) async throws {
+        if case .fail(let error) = behaviour { throw error }
+    }
+
     func allReceipts() async throws -> [ReceiptSnapshot] {
         if case .fail(let error) = behaviour { throw error }
         return []
@@ -67,7 +81,8 @@ struct LibraryViewModelTests {
             note: nil,
             ocrText: nil,
             groupID: nil,
-            pageIndex: 0
+            pageIndex: 0,
+            categoryID: nil
         )
     }
 

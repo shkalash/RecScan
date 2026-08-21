@@ -27,6 +27,14 @@ struct SettingsView: View {
                 } footer: {
                     Text("settings.currency.footer")
                 }
+
+                Section("settings.section.categories") {
+                    NavigationLink {
+                        CategoryListView()
+                    } label: {
+                        Label("settings.categories.manage", systemImage: SystemImage.category)
+                    }
+                }
             }
             .navigationTitle("settings.title")
             .navigationBarTitleDisplayMode(.inline)
