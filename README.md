@@ -3,7 +3,7 @@
 An iOS receipt scanner. Capture receipts with the camera, keep them in app-private
 storage, filter by date, and merge a selection into a single PDF to share.
 
-Personal project. Native Swift and SwiftUI, no third-party dependencies.
+Personal project. Native Swift and SwiftUI, one dependency.
 
 ## Why it exists
 
@@ -15,6 +15,18 @@ one PDF.
 The app never touches PhotoKit. There is no photo library usage key in `Info.plist` and
 no entitlement for one — receipts go from the camera straight into the app's own
 storage and stay there.
+
+## Dependencies
+
+[ZIPFoundation](https://github.com/weichsel/ZIPFoundation) (MIT), for archive import and
+export. Foundation can *write* a zip — `NSFileCoordinator`'s `.forUploading` option hands
+back one — but offers nothing in the other direction, and there is no public unzip. The
+alternatives were hand-rolling a ZIP parser or switching the archive to AppleArchive
+`.aar`, which would trade away the whole point of the format: that a zip of images and a
+JSON file opens on anything, years from now.
+
+`Package.resolved` is committed. This is an app, not a library, so the resolved versions
+are part of the build.
 
 ## Requirements
 
@@ -99,12 +111,41 @@ concurrent `CGImageDestinationFinalize` calls finish in about a tenth of a secon
 while twelve deadlock permanently and hang the whole run. The app never hits this — its
 only image writer is a serial actor — but the test suite fans out unless told not to.
 
+## Backup and restore
+
+**Export Archive** writes a zip of the original images plus `manifest.json`. Both halves
+stay readable without this app, which a copy of the SwiftData store would not — and a
+store copy is a trap besides, since SQLite runs in WAL mode and the `-wal` sidecar
+routinely holds newer data than the `.store` itself.
+
+Getting one back onto the phone works three ways: the in-app file picker, dragging it into
+the app's folder in Finder (`UIFileSharingEnabled`), or AirDropping it and choosing
+RecScan from the share sheet.
+
+### How merging works
+
+Receipts are identified by the `UUID` assigned at capture, which survives export and
+import. Deliberately not content-based: two scans of the same paper receipt are two
+receipts, and no image comparison should merge them.
+
+| Local state | Result |
+|---|---|
+| No receipt with this id | inserted |
+| Exists, archive is newer | updated |
+| Exists, local is same age or newer | skipped |
+| Exists but its image file is missing | updated — the image is restored regardless of dates |
+
+So exporting in August, reinstalling, scanning through September and then importing the
+August archive restores August alongside September with nothing duplicated. Importing the
+same archive twice is a no-op the second time.
+
 ## Status
 
-Capture, storage, library, detail editing, filtering and PDF export are implemented.
+Capture, storage, library, detail editing, filtering, PDF export and archive
+import/export are implemented.
 
-Not yet built: OCR autofill, Face ID lock, and archive export. `Receipt.ocrText` and the
-PDF's invisible searchable-text layer are already wired for the first of those.
+Not yet built: OCR autofill and Face ID lock. `Receipt.ocrText` and the PDF's invisible
+searchable-text layer are already wired for the first of those.
 
 ## Licence
 
