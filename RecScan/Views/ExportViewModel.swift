@@ -31,11 +31,13 @@ final class ExportViewModel {
         defer { isGenerating = false }
 
         let options = options
+        // Resolved here, at the boundary, then passed down into pure rendering code.
+        let currency = AppSettings.defaultCurrencyCode()
         do {
             // Rendering decodes full-resolution images; keeping it off the main actor
             // is what stops the sheet from freezing on a large selection.
             generatedURL = try await Task.detached(priority: .userInitiated) {
-                try PDFBuilder(fileStore: fileStore).buildPDF(receipts: receipts, options: options)
+                try PDFBuilder(fileStore: fileStore, defaultCurrencyCode: currency).buildPDF(receipts: receipts, options: options)
             }.value
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.exportFailed, error: error)

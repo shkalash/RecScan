@@ -223,7 +223,7 @@ struct ReceiptDetailView: View {
     private static let currencyCodes: [String] = Locale.commonISOCurrencyCodes
 
     private static var defaultCurrencyCode: String {
-        Locale.current.currency?.identifier ?? currencyCodes.first ?? ""
+        AppSettings.defaultCurrencyCode()
     }
 }
 

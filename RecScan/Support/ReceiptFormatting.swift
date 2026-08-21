@@ -26,12 +26,17 @@ enum ReceiptFormatting {
 
     /// An amount rendered in its own currency, or `nil` when there is no amount.
     ///
-    /// Falls back to the locale's currency when the receipt carries no code, which is
-    /// the common case for manually entered values.
-    static func amount(_ amount: Decimal?, currencyCode: String?, locale: Locale = .current) -> String? {
+    /// - Parameter defaultCode: currency to use when the receipt carries none. Passed in
+    ///   rather than read from settings so this stays pure and testable — see
+    ///   `AppSettings`.
+    static func amount(
+        _ amount: Decimal?,
+        currencyCode: String?,
+        defaultCode: String,
+        locale: Locale = .current
+    ) -> String? {
         guard let amount else { return nil }
-        let code = currencyCode ?? locale.currency?.identifier ?? fallbackCurrencyCode
-        return amount.formatted(.currency(code: code).locale(locale))
+        return amount.formatted(.currency(code: currencyCode ?? defaultCode).locale(locale))
     }
 
     /// File-name-safe timestamp for generated exports.
@@ -42,7 +47,4 @@ enum ReceiptFormatting {
         return formatter.string(from: date)
     }
 
-    /// Used only when the locale itself reports no currency, which happens for a few
-    /// region-less locales in the simulator.
-    private static let fallbackCurrencyCode = "USD"
 }

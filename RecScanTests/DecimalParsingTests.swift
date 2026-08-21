@@ -52,3 +52,59 @@ struct DecimalParsingTests {
         #expect(DecimalParsing.decimal(from: text, locale: german) == amount)
     }
 }
+
+@Suite("Default currency resolution")
+struct AppSettingsTests {
+
+    private func defaults() -> UserDefaults {
+        let suite = UserDefaults(suiteName: "AppSettingsTests-\(UUID().uuidString)")!
+        suite.removePersistentDomain(forName: suite.description)
+        return suite
+    }
+
+    @Test("An explicit setting wins over the locale")
+    func settingWins() {
+        let store = defaults()
+        store.set("ILS", forKey: AppSettings.Key.defaultCurrencyCode)
+
+        let code = AppSettings.defaultCurrencyCode(defaults: store, locale: Locale(identifier: "en_US"))
+
+        #expect(code == "ILS")
+    }
+
+    @Test("With no setting, the locale's currency is used")
+    func localeFallback() {
+        let code = AppSettings.defaultCurrencyCode(defaults: defaults(), locale: Locale(identifier: "en_US"))
+
+        #expect(code == "USD")
+    }
+
+    @Test("A locale with no currency falls back rather than producing nothing")
+    func finalFallback() {
+        let code = AppSettings.defaultCurrencyCode(defaults: defaults(), locale: Locale(identifier: "en_001"))
+
+        #expect(!code.isEmpty)
+    }
+
+    @Test("A receipt's own currency always beats the default")
+    func receiptCurrencyWins() {
+        let formatted = ReceiptFormatting.amount(
+            Decimal(string: "12.50"), currencyCode: "EUR",
+            defaultCode: "ILS", locale: Locale(identifier: "en_US")
+        )
+
+        #expect(formatted?.contains("€") == true)
+    }
+
+    @Test("A receipt with no currency renders in the default")
+    func defaultAppliesRetroactively() {
+        // The point of the setting: existing receipts stamped with no currency pick up
+        // the new default without being edited.
+        let formatted = ReceiptFormatting.amount(
+            Decimal(string: "12.50"), currencyCode: nil,
+            defaultCode: "ILS", locale: Locale(identifier: "en_US")
+        )
+
+        #expect(formatted?.contains("₪") == true)
+    }
+}

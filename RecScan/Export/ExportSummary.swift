@@ -46,15 +46,19 @@ struct ExportSummary: Sendable, Equatable {
     /// Builds a summary from the receipts about to be exported.
     ///
     /// - Parameter calendar: the calendar that defines month boundaries.
-    init(receipts: [ReceiptSnapshot], calendar: Calendar = .current, locale: Locale = .current) {
+    init(
+        receipts: [ReceiptSnapshot],
+        calendar: Calendar = .current,
+        defaultCurrencyCode: String = AppSettings.fallbackCurrencyCode
+    ) {
         receiptCount = receipts.count
 
         let priced = receipts.filter { $0.amount != nil }
-        let dominantCurrency = Self.dominantCurrencyCode(in: priced, locale: locale)
+        let dominantCurrency = Self.dominantCurrencyCode(in: priced, defaultCode: defaultCurrencyCode)
         currencyCode = dominantCurrency
 
         let counted = priced.filter {
-            Self.effectiveCurrencyCode(for: $0, locale: locale) == dominantCurrency
+            Self.effectiveCurrencyCode(for: $0, defaultCode: defaultCurrencyCode) == dominantCurrency
         }
         hasExcludedCurrencies = counted.count != priced.count
 
@@ -72,12 +76,12 @@ struct ExportSummary: Sendable, Equatable {
 
     // MARK: - Private
 
-    private static func effectiveCurrencyCode(for receipt: ReceiptSnapshot, locale: Locale) -> String? {
-        receipt.currencyCode ?? locale.currency?.identifier
+    private static func effectiveCurrencyCode(for receipt: ReceiptSnapshot, defaultCode: String) -> String? {
+        receipt.currencyCode ?? defaultCode
     }
 
-    private static func dominantCurrencyCode(in receipts: [ReceiptSnapshot], locale: Locale) -> String? {
-        let codes = receipts.compactMap { effectiveCurrencyCode(for: $0, locale: locale) }
+    private static func dominantCurrencyCode(in receipts: [ReceiptSnapshot], defaultCode: String) -> String? {
+        let codes = receipts.compactMap { effectiveCurrencyCode(for: $0, defaultCode: defaultCode) }
         guard !codes.isEmpty else { return nil }
 
         let frequencies = codes.reduce(into: [String: Int]()) { counts, code in

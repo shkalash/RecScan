@@ -1180,6 +1180,50 @@
           }
         }
       }
+    },
+    "settings.currency.default": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default currency"
+          }
+        }
+      }
+    },
+    "settings.currency.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used for receipts that do not have a currency of their own. Changing it updates those receipts everywhere, including in exports — nothing needs re-entering."
+          }
+        }
+      }
+    },
+    "settings.section.currency": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Currency"
+          }
+        }
+      }
+    },
+    "settings.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

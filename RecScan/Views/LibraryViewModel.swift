@@ -39,6 +39,7 @@ final class LibraryViewModel {
     var isPresentingExport = false
     var isPresentingArchiveExport = false
     var isPresentingArchiveImporter = false
+    var isPresentingSettings = false
     var importResult: ArchiveImportResult?
     var isConfirmingDeletion = false
     var isImporting = false

@@ -6,7 +6,9 @@ import Testing
 struct ExportSummaryTests {
 
     private let calendar = TestCalendar.utcGregorian
-    private let locale = Locale(identifier: "en_US")
+    /// Receipts in these fixtures carry explicit codes; this is what an unstamped one
+    /// would fall back to.
+    private let defaultCurrency = "USD"
 
     private func snapshot(
         day: Int,
@@ -38,7 +40,7 @@ struct ExportSummaryTests {
                 snapshot(day: 2, month: 1, amount: nil)
             ],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(summary.receiptCount == 2)
@@ -53,7 +55,7 @@ struct ExportSummaryTests {
                 snapshot(day: 7, month: 2, amount: Decimal(string: "100.00"))
             ],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(summary.monthTotals.count == 2)
@@ -66,7 +68,7 @@ struct ExportSummaryTests {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 2, amount: 1), snapshot(day: 1, month: 5, amount: 1)],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(summary.monthTotals.map(\.id) == [
@@ -84,7 +86,7 @@ struct ExportSummaryTests {
                 snapshot(day: 3, month: 3, amount: 999, currency: "JPY")
             ],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(summary.currencyCode == "USD")
@@ -97,7 +99,7 @@ struct ExportSummaryTests {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 3, amount: 10), snapshot(day: 2, month: 3, amount: 5)],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(!summary.hasExcludedCurrencies)
@@ -108,7 +110,7 @@ struct ExportSummaryTests {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 3, amount: nil), snapshot(day: 2, month: 3, amount: nil)],
             calendar: calendar,
-            locale: locale
+            defaultCurrencyCode: defaultCurrency
         )
 
         #expect(summary.receiptCount == 2)

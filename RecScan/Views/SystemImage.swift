@@ -19,4 +19,5 @@ enum SystemImage {
     static let more = "ellipsis.circle"
     static let archiveExport = "arrow.up.doc"
     static let archiveImport = "arrow.down.doc"
+    static let settings = "gearshape"
 }

@@ -41,6 +41,9 @@ struct LibraryView: View {
         .sheet(isPresented: $model.isPresentingExport) {
             ExportView(receipts: model.selectedReceipts)
         }
+        .sheet(isPresented: $model.isPresentingSettings) {
+            SettingsView()
+        }
         .sheet(isPresented: $model.isPresentingArchiveExport) {
             ArchiveExportView(selection: model.selectedReceipts)
         }
@@ -128,6 +131,12 @@ struct LibraryView: View {
                         model.isPresentingArchiveImporter = true
                     } label: {
                         Label("archive.action.import", systemImage: SystemImage.archiveImport)
+                    }
+                    Divider()
+                    Button {
+                        model.isPresentingSettings = true
+                    } label: {
+                        Label("settings.title", systemImage: SystemImage.settings)
                     }
                 } label: {
                     Label("library.action.more", systemImage: SystemImage.more)

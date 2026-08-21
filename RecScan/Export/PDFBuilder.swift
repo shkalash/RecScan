@@ -22,10 +22,17 @@ import UIKit
 struct PDFBuilder: Sendable {
 
     private let fileStore: any ImageFileStoring
+    /// Currency assumed for receipts carrying none. Injected so the renderer stays pure
+    /// and does not reach into `UserDefaults` from a background task.
+    private let defaultCurrencyCode: String
     private let logger = LogCategory.export.logger
 
-    init(fileStore: any ImageFileStoring = ImageFileStore()) {
+    init(
+        fileStore: any ImageFileStoring = ImageFileStore(),
+        defaultCurrencyCode: String = AppSettings.fallbackCurrencyCode
+    ) {
         self.fileStore = fileStore
+        self.defaultCurrencyCode = defaultCurrencyCode
     }
 
     /// Generates the PDF and returns the URL it was written to.
@@ -45,7 +52,9 @@ struct PDFBuilder: Sendable {
                 : lhs.capturedAt < rhs.capturedAt
         }
         let pages = ordered.chunked(into: options.layout.slotsPerPage)
-        let summary = options.includeSummaryPage ? ExportSummary(receipts: ordered) : nil
+        let summary = options.includeSummaryPage
+            ? ExportSummary(receipts: ordered, defaultCurrencyCode: defaultCurrencyCode)
+            : nil
         let summaryPages = summary.map { Self.summaryPages(for: $0) } ?? []
         let totalPageCount = pages.count + summaryPages.count
 
@@ -200,7 +209,7 @@ struct PDFBuilder: Sendable {
             color: .label
         )
 
-        if let amount = ReceiptFormatting.amount(receipt.amount, currencyCode: receipt.currencyCode) {
+        if let amount = ReceiptFormatting.amount(receipt.amount, currencyCode: receipt.currencyCode, defaultCode: defaultCurrencyCode) {
             Self.drawText(
                 amount,
                 in: CGRect(
@@ -322,7 +331,7 @@ struct PDFBuilder: Sendable {
             cursorY = drawSummaryRow(
                 month: ReceiptFormatting.monthTitle(for: monthTotal.id),
                 count: monthTotal.count.formatted(),
-                total: ReceiptFormatting.amount(monthTotal.total, currencyCode: summary.currencyCode) ?? "",
+                total: ReceiptFormatting.amount(monthTotal.total, currencyCode: summary.currencyCode, defaultCode: defaultCurrencyCode) ?? "",
                 atY: cursorY,
                 in: content,
                 font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody)
@@ -335,7 +344,7 @@ struct PDFBuilder: Sendable {
         cursorY = drawSummaryRow(
             month: String(localized: "pdf.summary.total"),
             count: summary.receiptCount.formatted(),
-            total: ReceiptFormatting.amount(summary.grandTotal, currencyCode: summary.currencyCode) ?? "",
+            total: ReceiptFormatting.amount(summary.grandTotal, currencyCode: summary.currencyCode, defaultCode: defaultCurrencyCode) ?? "",
             atY: cursorY,
             in: content,
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
