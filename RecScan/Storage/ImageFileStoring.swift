@@ -22,6 +22,14 @@ protocol ImageFileStoring: Sendable {
     @discardableResult
     func write(_ image: UIImage, for id: UUID) throws -> String
 
+    /// Writes already-encoded image bytes verbatim.
+    ///
+    /// Used by archive import, where the bytes came out of an archive and are already
+    /// HEIC. Routing them back through `ImageCodec.encodeHEIC` would re-compress a
+    /// lossy format a second time and cost a decode plus an encode for nothing.
+    @discardableResult
+    func write(_ data: Data, for id: UUID) throws -> String
+
     /// Decodes the full-resolution image. Callers must not hold onto the result.
     func fullResolutionImage(atRelativePath relativePath: String) throws -> UIImage
 

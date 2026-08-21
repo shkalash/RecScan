@@ -46,6 +46,18 @@ struct ImageFileStore: ImageFileStoring {
         return path
     }
 
+    @discardableResult
+    func write(_ data: Data, for id: UUID) throws -> String {
+        let path = relativePath(for: id)
+        let url = absoluteURL(forRelativePath: path)
+
+        try createImageDirectoryIfNeeded()
+        try data.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
+        // An imported image replaces whatever was cached for this identity.
+        thumbnailCache.removeImage(for: id)
+        return path
+    }
+
     // MARK: - Read
 
     func fullResolutionImage(atRelativePath relativePath: String) throws -> UIImage {

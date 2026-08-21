@@ -49,9 +49,12 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             // leave a row pointing at nothing, which the library cannot render.
             let relativePath = try fileStore.write(page, for: id)
 
+            let now = Date()
             let receipt = Receipt(
                 id: id,
                 capturedAt: capturedAt,
+                createdAt: now,
+                modifiedAt: now,
                 relativePath: relativePath,
                 groupID: groupID,
                 pageIndex: index
@@ -84,6 +87,7 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             note: receipt.note,
             ocrText: receipt.ocrText
         )
+        receipt.modifiedAt = Date()
 
         try modelContext.save()
     }
@@ -111,6 +115,122 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         }
 
         try modelContext.save()
+    }
+
+    // MARK: - Reading
+
+    func allReceipts() async throws -> [ReceiptSnapshot] {
+        let descriptor = FetchDescriptor<Receipt>(
+            sortBy: [
+                SortDescriptor(\Receipt.capturedAt, order: .forward),
+                SortDescriptor(\Receipt.pageIndex, order: .forward)
+            ]
+        )
+        return try modelContext.fetch(descriptor).map(ReceiptSnapshot.init)
+    }
+
+    // MARK: - Archive import
+
+    /// Merges archived receipts, deciding per receipt via `ArchiveMergePolicy`.
+    ///
+    /// Images are written before the row is touched, for the same reason capture does it
+    /// that way: a stray file with no row is invisible, whereas a row pointing at a file
+    /// that was never written renders as a permanently broken receipt.
+    @discardableResult
+    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult {
+        var result = ArchiveImportResult()
+
+        for staged in receipts {
+            let entry = staged.entry
+
+            guard let imageData = staged.imageData else {
+                // The manifest promised an image the archive does not hold. Importing the
+                // metadata alone would create a receipt that can never be opened.
+                result.missingImages += 1
+                logger.error("Import: no image for \(entry.id, privacy: .public)")
+                continue
+            }
+
+            let existing = try fetchReceipt(id: entry.id)
+            let localState = existing.map { receipt in
+                ArchiveMergePolicy.LocalState(
+                    modifiedAt: receipt.modifiedAt,
+                    hasImageFile: (try? fileStore.fullResolutionImage(
+                        atRelativePath: receipt.relativePath
+                    )) != nil
+                )
+            }
+
+            switch ArchiveMergePolicy.decide(local: localState, archivedModifiedAt: entry.modifiedAt) {
+            case .skip:
+                result.skipped += 1
+
+            case .insert:
+                let relativePath = try fileStore.write(imageData, for: entry.id)
+                modelContext.insert(makeReceipt(from: entry, relativePath: relativePath))
+                result.inserted += 1
+
+            case .update:
+                let relativePath = try fileStore.write(imageData, for: entry.id)
+                if let existing {
+                    apply(entry, to: existing, relativePath: relativePath)
+                } else {
+                    modelContext.insert(makeReceipt(from: entry, relativePath: relativePath))
+                }
+                result.updated += 1
+            }
+        }
+
+        try modelContext.save()
+        logger.info(
+            """
+            Import: \(result.inserted, privacy: .public) inserted, \
+            \(result.updated, privacy: .public) updated, \
+            \(result.skipped, privacy: .public) skipped.
+            """
+        )
+        return result
+    }
+
+    private func makeReceipt(from entry: ArchiveManifest.Entry, relativePath: String) -> Receipt {
+        Receipt(
+            id: entry.id,
+            capturedAt: entry.capturedAt,
+            createdAt: entry.createdAt,
+            modifiedAt: entry.modifiedAt,
+            relativePath: relativePath,
+            merchant: entry.merchant,
+            amount: entry.decimalAmount,
+            currencyCode: entry.currencyCode,
+            note: entry.note,
+            ocrText: entry.ocrText,
+            groupID: entry.groupID,
+            pageIndex: entry.pageIndex,
+            searchIndex: ReceiptSearchIndex.make(
+                merchant: entry.merchant,
+                note: entry.note,
+                ocrText: entry.ocrText
+            )
+        )
+    }
+
+    private func apply(_ entry: ArchiveManifest.Entry, to receipt: Receipt, relativePath: String) {
+        receipt.capturedAt = entry.capturedAt
+        receipt.createdAt = entry.createdAt
+        receipt.modifiedAt = entry.modifiedAt
+        receipt.relativePath = relativePath
+        receipt.merchant = entry.merchant
+        receipt.amount = entry.decimalAmount
+        receipt.currencyCode = entry.currencyCode
+        receipt.note = entry.note
+        receipt.ocrText = entry.ocrText
+        receipt.groupID = entry.groupID
+        receipt.pageIndex = entry.pageIndex
+        receipt.searchIndex = ReceiptSearchIndex.make(
+            merchant: entry.merchant,
+            note: entry.note,
+            ocrText: entry.ocrText
+        )
     }
 
     // MARK: - Private

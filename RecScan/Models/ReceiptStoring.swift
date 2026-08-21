@@ -27,4 +27,17 @@ protocol ReceiptStoring: Sendable {
 
     /// Deletes rows *and* their backing image files.
     func delete(receiptsWithIDs ids: [UUID]) async throws
+
+    /// Every receipt in the library, oldest first, ignoring any active filter.
+    ///
+    /// Archive export needs this: a backup taken through the library's filter would look
+    /// complete while holding one month.
+    func allReceipts() async throws -> [ReceiptSnapshot]
+
+    /// Merges archived receipts into the library.
+    ///
+    /// Identity is the receipt's `UUID`, so importing the same archive twice changes
+    /// nothing the second time. See `ArchiveMergePolicy` for the rules.
+    @discardableResult
+    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult
 }
