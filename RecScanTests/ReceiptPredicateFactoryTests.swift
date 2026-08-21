@@ -26,7 +26,8 @@ struct ReceiptPredicateFactoryTests {
         month: Int = 4,
         merchant: String? = nil,
         note: String? = nil,
-        ocrText: String? = nil
+        ocrText: String? = nil,
+        categoryID: UUID? = nil
     ) -> Receipt {
         let receipt = Receipt(
             capturedAt: TestCalendar.date(year: 2026, month: month, day: day),
@@ -34,16 +35,23 @@ struct ReceiptPredicateFactoryTests {
             merchant: merchant,
             note: note,
             ocrText: ocrText,
+            categoryID: categoryID,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: ocrText)
         )
         context.insert(receipt)
         return receipt
     }
 
-    private func fetch(interval: DateInterval?, searchText: String) throws -> [Receipt] {
+    private func fetch(
+        interval: DateInterval? = nil,
+        searchText: String = "",
+        categoryID: UUID? = nil
+    ) throws -> [Receipt] {
         try context.fetch(
             FetchDescriptor<Receipt>(
-                predicate: ReceiptPredicateFactory.makePredicate(interval: interval, searchText: searchText)
+                predicate: ReceiptPredicateFactory.makePredicate(
+                    interval: interval, searchText: searchText, categoryID: categoryID
+                )
             )
         )
     }
@@ -112,6 +120,64 @@ struct ReceiptPredicateFactoryTests {
         )
 
         let results = try fetch(interval: interval, searchText: "blue")
+
+        #expect(results.count == 1)
+        #expect(results.first?.capturedAt == TestCalendar.date(year: 2026, month: 4, day: 5))
+    }
+
+    @Test("An empty query matches every row")
+    func emptyQueryMatchesEverything() throws {
+        // Measured, not assumed: `contains("")` is true in Swift but matches nothing once
+        // SwiftData translates it, which is why an empty query takes its own branch
+        // rather than riding the sentinel the date and category filters use.
+        insert(day: 1, merchant: "Blue Bottle")
+        insert(day: 2)
+
+        #expect(try fetch(searchText: "").count == 2)
+    }
+
+    @Test("The unbounded date sentinel matches every row")
+    func unboundedDatesMatchEverything() throws {
+        insert(day: 1, month: 1)
+        insert(day: 1, month: 12)
+
+        #expect(try fetch(interval: nil).count == 2)
+    }
+
+    @Test("Filtering by category returns only that category")
+    func filtersByCategory() throws {
+        let wanted = UUID()
+        insert(day: 1, categoryID: wanted)
+        insert(day: 2, categoryID: UUID())
+        insert(day: 3)
+
+        let results = try fetch(categoryID: wanted)
+
+        #expect(results.count == 1)
+        #expect(results.first?.categoryID == wanted)
+    }
+
+    @Test("No category selection returns every receipt, categorised or not")
+    func noCategoryReturnsEverything() throws {
+        insert(day: 1, categoryID: UUID())
+        insert(day: 2)
+
+        #expect(try fetch(categoryID: nil).count == 2)
+    }
+
+    @Test("Category, date and text all apply together")
+    func allThreeCombine() throws {
+        let wanted = UUID()
+        insert(day: 5, month: 4, merchant: "Blue Bottle", categoryID: wanted)
+        insert(day: 5, month: 5, merchant: "Blue Bottle", categoryID: wanted)
+        insert(day: 6, month: 4, merchant: "Other", categoryID: wanted)
+        insert(day: 7, month: 4, merchant: "Blue Bottle")
+        let interval = DateInterval(
+            start: TestCalendar.date(year: 2026, month: 4, day: 1, hour: 0),
+            end: TestCalendar.date(year: 2026, month: 5, day: 1, hour: 0)
+        )
+
+        let results = try fetch(interval: interval, searchText: "blue", categoryID: wanted)
 
         #expect(results.count == 1)
         #expect(results.first?.capturedAt == TestCalendar.date(year: 2026, month: 4, day: 5))

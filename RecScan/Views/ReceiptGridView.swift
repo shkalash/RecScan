@@ -26,7 +26,8 @@ struct ReceiptGridView: View {
         let interval = filter.resolvedInterval()
         let predicate = ReceiptPredicateFactory.makePredicate(
             interval: interval,
-            searchText: filter.searchText
+            searchText: filter.searchText,
+            categoryID: filter.categoryID
         )
         _receipts = Query(
             filter: predicate,

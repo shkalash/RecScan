@@ -23,6 +23,14 @@ struct ReceiptFilterTests {
         #expect(!ReceiptFilter(searchText: "   \n").isActive)
     }
 
+    @Test("Choosing a category activates the filter")
+    func categoryActivatesFilter() {
+        // Without this the toolbar badge would not light up for a category-only filter,
+        // and a narrowed library would look like the whole library.
+        #expect(ReceiptFilter(categoryID: UUID()).isActive)
+        #expect(!ReceiptFilter(categoryID: nil).isActive)
+    }
+
     @Test("A custom range covers whole days, so a single-day range is not empty")
     func customRangeCoversWholeDays() throws {
         let day = TestCalendar.date(year: 2026, month: 2, day: 10, hour: 14)

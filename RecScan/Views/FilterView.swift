@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// Date-range and text filters for the library.
@@ -10,6 +11,8 @@ import SwiftUI
 struct FilterView: View {
 
     @Binding var filter: ReceiptFilter
+
+    @Query(sort: \ReceiptCategory.name) private var categories: [ReceiptCategory]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -40,6 +43,19 @@ struct FilterView: View {
                     }
                 }
 
+                if !categories.isEmpty {
+                    Section("filter.section.category") {
+                        Picker("filter.section.category", selection: $filter.categoryID) {
+                            Text("filter.category.all").tag(UUID?.none)
+                            ForEach(categories) { category in
+                                Text(category.name).tag(UUID?.some(category.id))
+                            }
+                        }
+                        .pickerStyle(.inline)
+                        .labelsHidden()
+                    }
+                }
+
                 Section {
                     TextField("filter.search.placeholder", text: $filter.searchText)
                         .textInputAutocapitalization(.never)
@@ -65,7 +81,18 @@ struct FilterView: View {
     }
 }
 
-#Preview {
+#if DEBUG
+#Preview("Filter") {
     @Previewable @State var filter = ReceiptFilter()
-    return FilterView(filter: $filter)
+    return FilterView(filter: $filter).previewLibrary()
 }
+
+#Preview("Filter — active") {
+    @Previewable @State var filter = ReceiptFilter(
+        preset: .thisQuarter,
+        searchText: "coffee",
+        categoryID: PreviewFixture.primaryCategoryID
+    )
+    return FilterView(filter: $filter).previewLibrary()
+}
+#endif

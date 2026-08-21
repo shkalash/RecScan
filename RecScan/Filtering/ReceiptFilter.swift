@@ -11,22 +11,26 @@ struct ReceiptFilter: Hashable, Sendable {
     var customStart: Date
     var customEnd: Date
     var searchText: String
+    /// `nil` means every category, including uncategorised receipts.
+    var categoryID: UUID?
 
     init(
         preset: DateRangePreset = .allTime,
         customStart: Date = Date(),
         customEnd: Date = Date(),
-        searchText: String = ""
+        searchText: String = "",
+        categoryID: UUID? = nil
     ) {
         self.preset = preset
         self.customStart = customStart
         self.customEnd = customEnd
         self.searchText = searchText
+        self.categoryID = categoryID
     }
 
     /// Whether the filter narrows the library at all. Drives the toolbar badge.
     var isActive: Bool {
-        preset != .allTime || !trimmedSearchText.isEmpty
+        preset != .allTime || !trimmedSearchText.isEmpty || categoryID != nil
     }
 
     var trimmedSearchText: String {

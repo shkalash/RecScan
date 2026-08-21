@@ -794,6 +794,17 @@
         }
       }
     },
+    "filter.category.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Categories"
+          }
+        }
+      }
+    },
     "filter.custom.end": {
       "extractionState": "manual",
       "localizations": {
@@ -900,6 +911,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Merchant, note or scanned text"
+          }
+        }
+      }
+    },
+    "filter.section.category": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Category"
           }
         }
       }
