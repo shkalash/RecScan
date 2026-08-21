@@ -45,6 +45,9 @@ final class LibraryViewModel {
     var isPresentingPhotoPicker = false
     var isPresentingFileImporter = false
     var photoSelection: [PhotosPickerItem] = []
+
+    /// Gathers `.onOpenURL` callbacks, which arrive one per file, into one batch.
+    private let handoffQueue = ImportQueue()
     var isPresentingSettings = false
     var importResult: ArchiveImportResult?
     /// Newly added receipts awaiting their details. Empty dismisses the sheet.
@@ -219,6 +222,29 @@ final class LibraryViewModel {
             SharedInbox.remove(pending)
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
+        }
+    }
+
+    /// Accepts a file handed over by AirDrop or "Open with".
+    ///
+    /// Queued rather than imported immediately: these arrive one callback per file, and
+    /// importing on each would raise a review sheet per file, each replacing the last.
+    func acceptHandoff(of url: URL, using store: any ReceiptStoring) {
+        guard canHandle(url) || canImport(url) else { return }
+
+        handoffQueue.enqueue(url) { [weak self] batch in
+            guard let self else { return }
+            // Archives and receipts are different imports, so a mixed batch is split
+            // rather than forced through one path.
+            let archives = batch.filter { self.canHandle($0) }
+            let receipts = batch.filter { !self.canHandle($0) && self.canImport($0) }
+
+            for archive in archives {
+                await self.importArchive(at: archive, using: store, isInbox: true)
+            }
+            if !receipts.isEmpty {
+                await self.importFiles(at: receipts, using: store, isInbox: true)
+            }
         }
     }
 

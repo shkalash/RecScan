@@ -87,13 +87,9 @@ struct LibraryView: View {
             Task { await model.importPickedPhotos(selection, using: receiptStore) }
         }
         .onOpenURL { url in
-            // AirDrop and "Open with" copy the file into Documents/Inbox and hand us the
-            // copy, so it is ours to delete once consumed.
-            if model.canHandle(url) {
-                Task { await model.importArchive(at: url, using: receiptStore, isInbox: true) }
-            } else if model.canImport(url) {
-                Task { await model.importFiles(at: [url], using: receiptStore, isInbox: true) }
-            }
+            // Called once per file, so this queues rather than imports: five shared files
+            // must become one review sheet, not five that overwrite each other.
+            model.acceptHandoff(of: url, using: receiptStore)
         }
         .confirmationDialog(
             "library.delete.confirm.title",

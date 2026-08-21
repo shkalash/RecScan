@@ -27,6 +27,11 @@ enum AppConstants {
         /// Delay before requesting focus inside a freshly presented popover or sheet.
         /// Short enough to feel immediate, long enough that the field is in the window.
         static let focusDelayMilliseconds = 350
+
+        /// Window for gathering files that arrive one callback at a time. Long enough to
+        /// catch a burst from one share, short enough that a single file still feels
+        /// immediate.
+        static let importCoalesceMilliseconds = 400
     }
 
     /// Formatting values shared by the library, detail and export layers.
