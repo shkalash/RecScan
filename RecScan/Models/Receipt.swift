@@ -30,6 +30,14 @@ final class Receipt {
     /// When the row was created. Never edited — this is the audit trail.
     var createdAt: Date = Date()
 
+    /// When any user-visible field last changed.
+    ///
+    /// Maintained by `ReceiptStore` on every write. This is the signal archive import
+    /// uses to decide whether an incoming copy is newer than the local one; without it
+    /// a merge can only guess, and guessing means either clobbering fresh edits or
+    /// silently dropping restored ones.
+    var modifiedAt: Date = Date()
+
     /// Path to the image relative to the Documents directory, e.g. `Receipts/<uuid>.heic`.
     var relativePath: String = ""
 
@@ -57,6 +65,7 @@ final class Receipt {
         id: UUID = UUID(),
         capturedAt: Date = Date(),
         createdAt: Date = Date(),
+        modifiedAt: Date = Date(),
         relativePath: String = "",
         merchant: String? = nil,
         amount: Decimal? = nil,
@@ -70,6 +79,7 @@ final class Receipt {
         self.id = id
         self.capturedAt = capturedAt
         self.createdAt = createdAt
+        self.modifiedAt = modifiedAt
         self.relativePath = relativePath
         self.merchant = merchant
         self.amount = amount

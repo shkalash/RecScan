@@ -13,6 +13,8 @@ import Foundation
 struct ReceiptSnapshot: Sendable, Identifiable, Hashable {
     let id: UUID
     let capturedAt: Date
+    let createdAt: Date
+    let modifiedAt: Date
     let relativePath: String
     let merchant: String?
     let amount: Decimal?
@@ -28,6 +30,8 @@ extension ReceiptSnapshot {
         self.init(
             id: receipt.id,
             capturedAt: receipt.capturedAt,
+            createdAt: receipt.createdAt,
+            modifiedAt: receipt.modifiedAt,
             relativePath: receipt.relativePath,
             merchant: receipt.merchant,
             amount: receipt.amount,
