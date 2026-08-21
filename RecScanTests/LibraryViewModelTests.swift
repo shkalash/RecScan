@@ -37,6 +37,17 @@ private actor SpyReceiptStore: ReceiptStoring {
         deletedIDs.append(ids)
         if case .fail(let error) = behaviour { throw error }
     }
+
+    func allReceipts() async throws -> [ReceiptSnapshot] {
+        if case .fail(let error) = behaviour { throw error }
+        return []
+    }
+
+    @discardableResult
+    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult {
+        if case .fail(let error) = behaviour { throw error }
+        return ArchiveImportResult(inserted: receipts.count)
+    }
 }
 
 @MainActor
@@ -47,6 +58,8 @@ struct LibraryViewModelTests {
         ReceiptSnapshot(
             id: id,
             capturedAt: .now,
+            createdAt: .now,
+            modifiedAt: .now,
             relativePath: "Receipts/\(id.uuidString).heic",
             merchant: nil,
             amount: nil,

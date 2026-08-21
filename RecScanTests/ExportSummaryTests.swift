@@ -17,6 +17,8 @@ struct ExportSummaryTests {
         ReceiptSnapshot(
             id: UUID(),
             capturedAt: TestCalendar.date(year: 2026, month: month, day: day),
+            createdAt: TestCalendar.date(year: 2026, month: month, day: day),
+            modifiedAt: TestCalendar.date(year: 2026, month: month, day: day),
             relativePath: "Receipts/\(UUID().uuidString).heic",
             merchant: nil,
             amount: amount,

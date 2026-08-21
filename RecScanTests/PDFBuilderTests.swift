@@ -33,6 +33,8 @@ extension ImagePipelineSuite {
             return ReceiptSnapshot(
                 id: id,
                 capturedAt: TestCalendar.date(year: 2026, month: 4, day: day),
+                createdAt: TestCalendar.date(year: 2026, month: 4, day: day),
+                modifiedAt: TestCalendar.date(year: 2026, month: 4, day: day),
                 relativePath: path,
                 merchant: "Merchant \(day)",
                 amount: amount,
