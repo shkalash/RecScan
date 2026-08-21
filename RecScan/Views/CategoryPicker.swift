@@ -40,7 +40,10 @@ struct CategoryPicker: View {
         .buttonStyle(.plain)
         .popover(isPresented: $isPresented) {
             content
-                .frame(minWidth: LayoutMetrics.CategoryPicker.minimumWidth)
+                .frame(
+                    width: LayoutMetrics.CategoryPicker.width,
+                    height: popoverHeight
+                )
                 .presentationCompactAdaptation(.popover)
         }
         .errorAlert($presentedError)
@@ -102,6 +105,20 @@ struct CategoryPicker: View {
 
     // MARK: - Derived
 
+    /// Tall enough to show the list, capped so it never runs off screen.
+    ///
+    /// Counts the categories plus the "None" row; the typing field and section insets
+    /// are the fixed chrome on top.
+    private var popoverHeight: CGFloat {
+        let rows = CGFloat(categories.count + 1)
+        let content = rows * LayoutMetrics.CategoryPicker.rowHeight
+            + LayoutMetrics.CategoryPicker.chromeHeight
+        return min(
+            max(content, LayoutMetrics.CategoryPicker.minimumHeight),
+            LayoutMetrics.CategoryPicker.maximumHeight
+        )
+    }
+
     private var selectedName: String {
         guard let selection, let match = categories.first(where: { $0.id == selection }) else {
             return String(localized: "category.none")
@@ -145,5 +162,16 @@ struct CategoryPicker: View {
         CategoryPicker(selection: $selection)
     }
     .previewLibrary()
+}
+
+#Preview("Category picker — long list") {
+    @Previewable @State var selection: UUID?
+    return Form {
+        CategoryPicker(selection: $selection)
+    }
+    .previewLibrary(
+        container: PreviewFixture.crowdedContainer,
+        store: PreviewFixture.crowdedStore
+    )
 }
 #endif

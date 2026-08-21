@@ -28,7 +28,17 @@ enum LayoutMetrics {
 
     enum CategoryPicker {
         /// Wide enough that category names are not truncated in the popover.
-        static let minimumWidth: CGFloat = 260
+        static let width: CGFloat = 320
+
+        /// A `List` has no intrinsic height, so inside a popover it collapses to a
+        /// single row. The height is therefore computed from the row count and clamped,
+        /// rather than left to the container to infer.
+        static let rowHeight: CGFloat = 44
+        /// The text field row plus section insets, which are not part of the row count.
+        static let chromeHeight: CGFloat = 96
+        static let minimumHeight: CGFloat = 320
+        /// Kept clear of the screen edges on the smallest supported device.
+        static let maximumHeight: CGFloat = 480
     }
 
     enum Form {

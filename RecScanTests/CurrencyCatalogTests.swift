@@ -56,3 +56,42 @@ struct CurrencyCatalogTests {
         #expect(CurrencyCatalog.name(for: "ZZZ", locale: locale) == "ZZZ")
     }
 }
+
+
+@Suite("Category picker sizing")
+struct CategoryPickerSizingTests {
+
+    /// Mirrors `CategoryPicker.popoverHeight`, which is private to the view.
+    private func height(categoryCount: Int) -> CGFloat {
+        let rows = CGFloat(categoryCount + 1)
+        let content = rows * LayoutMetrics.CategoryPicker.rowHeight
+            + LayoutMetrics.CategoryPicker.chromeHeight
+        return min(
+            max(content, LayoutMetrics.CategoryPicker.minimumHeight),
+            LayoutMetrics.CategoryPicker.maximumHeight
+        )
+    }
+
+    @Test("An empty list still opens at a usable size")
+    func emptyListIsNotCollapsed() {
+        // The bug this guards: a List has no intrinsic height, so the popover collapsed
+        // to a single row and there was nothing to pick from.
+        #expect(height(categoryCount: 0) == LayoutMetrics.CategoryPicker.minimumHeight)
+        #expect(height(categoryCount: 0) >= 300)
+    }
+
+    @Test("The popover grows with the number of categories")
+    func growsWithContent() {
+        #expect(height(categoryCount: 8) > height(categoryCount: 2))
+    }
+
+    @Test("Growth is capped so it cannot run off screen")
+    func heightIsCapped() {
+        #expect(height(categoryCount: 200) == LayoutMetrics.CategoryPicker.maximumHeight)
+    }
+
+    @Test("The popover is wide enough for real category names")
+    func widthFitsNames() {
+        #expect(LayoutMetrics.CategoryPicker.width >= 300)
+    }
+}

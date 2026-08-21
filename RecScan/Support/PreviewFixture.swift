@@ -75,6 +75,26 @@ enum PreviewFixture {
     static let receiptStore: any ReceiptStoring =
         ReceiptStore(modelContainer: container, fileStore: imageFileStore)
 
+    /// A library with a long category list, for judging the picker at its height cap.
+    static let crowdedContainer: ModelContainer = {
+        guard let container = try? ModelContainerFactory.makeInMemoryContainer() else {
+            fatalError("Preview container could not be created")
+        }
+        let context = ModelContext(container)
+        for name in crowdedCategoryNames { context.insert(ReceiptCategory(name: name)) }
+        try? context.save()
+        return container
+    }()
+
+    static let crowdedStore: any ReceiptStoring =
+        ReceiptStore(modelContainer: crowdedContainer, fileStore: imageFileStore)
+
+    private static let crowdedCategoryNames = [
+        "Groceries", "Fuel", "Office", "Meals", "Travel", "Hardware",
+        "Software", "Utilities", "Rent", "Medical", "Books", "Gifts",
+        "Parking", "Shipping"
+    ]
+
     private static let receiptCount = 7
 
     // MARK: - Models
@@ -150,10 +170,13 @@ enum PreviewFixture {
 /// Every data-backed preview needs the same three things wired up; forgetting one shows
 /// an empty view rather than an error, which is the slowest kind of mistake to notice.
 extension View {
-    func previewLibrary() -> some View {
-        environment(\.receiptStore, PreviewFixture.receiptStore)
+    func previewLibrary(
+        container: ModelContainer = PreviewFixture.container,
+        store: (any ReceiptStoring)? = nil
+    ) -> some View {
+        environment(\.receiptStore, store ?? PreviewFixture.receiptStore)
             .environment(\.imageFileStore, PreviewFixture.imageFileStore)
-            .modelContainer(PreviewFixture.container)
+            .modelContainer(container)
     }
 }
 #endif
