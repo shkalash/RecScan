@@ -79,3 +79,10 @@ struct ZoomableImageView: UIViewRepresentable {
         }
     }
 }
+
+#if DEBUG
+#Preview("Zoomable receipt") {
+    ZoomableImageView(image: SampleReceiptImage.make(index: 0))
+        .background(Color(.systemBackground))
+}
+#endif

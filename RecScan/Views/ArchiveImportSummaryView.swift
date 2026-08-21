@@ -46,3 +46,15 @@ struct ArchiveImportSummaryView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Import summary") {
+    ArchiveImportSummaryView(
+        result: ArchiveImportResult(inserted: 24, updated: 3, skipped: 11, missingImages: 1)
+    )
+}
+
+#Preview("Import summary — nothing changed") {
+    ArchiveImportSummaryView(result: ArchiveImportResult(skipped: 38))
+}
+#endif

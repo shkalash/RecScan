@@ -33,51 +33,9 @@ enum DebugSampleData {
 
         for index in 0..<count {
             let capturedAt = calendar.date(byAdding: .day, value: -index * 9, to: Date()) ?? Date()
-            _ = try? await store.importScan(pages: [makeReceiptImage(index: index)], capturedAt: capturedAt)
+            _ = try? await store.importScan(pages: [SampleReceiptImage.make(index: index)], capturedAt: capturedAt)
         }
     }
 
-    // MARK: - Synthetic imagery
-
-    private static let merchants = [
-        "BLUE BOTTLE", "SUPER YUDA", "PAZ FUEL", "OFFICE DEPOT",
-        "CAFE LANDWER", "AM:PM", "IKEA", "STEIMATZKY"
-    ]
-
-    /// A tall, receipt-shaped image with a header block and ruled lines.
-    ///
-    /// Deliberately taller than it is wide so that square-tile cropping is visible —
-    /// a square placeholder would hide exactly the bug this is meant to expose.
-    private static func makeReceiptImage(index: Int) -> UIImage {
-        let size = CGSize(width: 620, height: 1000)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = true
-
-        return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            UIColor.white.setFill()
-            context.fill(CGRect(origin: .zero, size: size))
-
-            let title = merchants[index % merchants.count]
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.monospacedSystemFont(ofSize: 46, weight: .bold),
-                .foregroundColor: UIColor.black
-            ]
-            let titleSize = title.size(withAttributes: attributes)
-            title.draw(at: CGPoint(x: (size.width - titleSize.width) / 2, y: 70), withAttributes: attributes)
-
-            UIColor.black.withAlphaComponent(0.75).setFill()
-            context.fill(CGRect(x: 90, y: 160, width: size.width - 180, height: 4))
-
-            UIColor.black.withAlphaComponent(0.45).setFill()
-            for row in 0..<14 {
-                let width = Double.random(in: 0.35...0.86) * (size.width - 180)
-                context.fill(CGRect(x: 90, y: 210 + Double(row) * 46, width: width, height: 12))
-            }
-
-            UIColor.black.setFill()
-            context.fill(CGRect(x: 90, y: 880, width: size.width - 180, height: 18))
-        }
-    }
 }
 #endif

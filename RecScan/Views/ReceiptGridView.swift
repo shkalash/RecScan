@@ -151,3 +151,21 @@ struct ReceiptGridView: View {
         MonthGrouper.group(receipts) { $0.capturedAt }
     }
 }
+
+#if DEBUG
+#Preview("Grid") {
+    NavigationStack {
+        ReceiptGridView(filter: ReceiptFilter(), model: PreviewFixture.libraryModel())
+            .navigationTitle("library.title")
+    }
+    .previewLibrary()
+}
+
+#Preview("Grid — selecting") {
+    NavigationStack {
+        ReceiptGridView(filter: ReceiptFilter(), model: PreviewFixture.libraryModel(selecting: true))
+            .navigationTitle("library.title")
+    }
+    .previewLibrary()
+}
+#endif

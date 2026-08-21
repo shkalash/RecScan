@@ -86,3 +86,10 @@ struct ExportView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("PDF export") {
+    ExportView(receipts: PreviewFixture.snapshots(count: 12))
+        .previewLibrary()
+}
+#endif

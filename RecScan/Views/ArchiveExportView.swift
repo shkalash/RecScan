@@ -71,3 +71,10 @@ struct ArchiveExportView: View {
         await model.generate(selection: selection, store: receiptStore, fileStore: imageFileStore)
     }
 }
+
+#if DEBUG
+#Preview("Archive export") {
+    ArchiveExportView(selection: PreviewFixture.snapshots(count: 12))
+        .previewLibrary()
+}
+#endif

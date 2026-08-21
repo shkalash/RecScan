@@ -92,3 +92,27 @@ struct ReceiptThumbnailView: View {
         thumbnail = image
     }
 }
+
+#if DEBUG
+#Preview("Tile") {
+    ReceiptThumbnailView(
+        receipt: PreviewFixture.receipt,
+        isSelectionActive: false,
+        isSelected: false,
+        side: 96
+    )
+    .previewLibrary()
+    .padding()
+}
+
+#Preview("Tile — selected") {
+    ReceiptThumbnailView(
+        receipt: PreviewFixture.receipt,
+        isSelectionActive: true,
+        isSelected: true,
+        side: 96
+    )
+    .previewLibrary()
+    .padding()
+}
+#endif

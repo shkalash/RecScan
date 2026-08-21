@@ -187,7 +187,8 @@ struct LibraryView: View {
     }
 }
 
-#Preview {
-    LibraryView()
-        .modelContainer(ModelContainerFactory.preview)
+#if DEBUG
+#Preview("Library") {
+    LibraryView().previewLibrary()
 }
+#endif

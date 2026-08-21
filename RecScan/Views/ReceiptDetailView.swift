@@ -226,3 +226,12 @@ struct ReceiptDetailView: View {
         Locale.current.currency?.identifier ?? currencyCodes.first ?? ""
     }
 }
+
+#if DEBUG
+#Preview("Detail") {
+    NavigationStack {
+        ReceiptDetailView(receipt: PreviewFixture.receipt)
+    }
+    .previewLibrary()
+}
+#endif
