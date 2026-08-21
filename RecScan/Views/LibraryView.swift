@@ -41,6 +41,9 @@ struct LibraryView: View {
         .sheet(isPresented: $model.isPresentingExport) {
             ExportView(receipts: model.selectedReceipts)
         }
+        .sheet(isPresented: isReviewing) {
+            ReceiptReviewSheet(receipts: model.pendingReview)
+        }
         .sheet(isPresented: $model.isPresentingSettings) {
             SettingsView()
         }
@@ -76,6 +79,18 @@ struct LibraryView: View {
             Text("library.delete.confirm.message \(model.selection.count)")
         }
         .errorAlert($model.presentedError)
+    }
+
+    /// Driven by the queue rather than a separate flag, so the two cannot disagree about
+    /// whether there is anything to review.
+    private var isReviewing: Binding<Bool> {
+        Binding(
+            get: { !model.pendingReview.isEmpty },
+            set: { presented in
+                guard !presented else { return }
+                model.pendingReview = []
+            }
+        )
     }
 
     // MARK: - Title

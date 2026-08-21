@@ -41,6 +41,8 @@ final class LibraryViewModel {
     var isPresentingArchiveImporter = false
     var isPresentingSettings = false
     var importResult: ArchiveImportResult?
+    /// Newly added receipts awaiting their details. Empty dismisses the sheet.
+    var pendingReview: [ReceiptSnapshot] = []
     var isConfirmingDeletion = false
     var isImporting = false
     var presentedError: PresentableError?
@@ -101,7 +103,12 @@ final class LibraryViewModel {
         defer { isImporting = false }
 
         do {
-            try await store.importScan(pages: pages, capturedAt: Date())
+            let created = try await store.importScan(pages: pages, capturedAt: Date())
+            // Straight into review rather than saving silently: the details are easiest to
+            // supply now, while the receipt is still in hand.
+            let all = try await store.allReceipts()
+            let ids = Set(created)
+            pendingReview = all.filter { ids.contains($0.id) }
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
         }

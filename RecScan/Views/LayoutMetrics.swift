@@ -41,6 +41,11 @@ enum LayoutMetrics {
         static let maximumHeight: CGFloat = 480
     }
 
+    enum Review {
+        /// Small enough that the fields the sheet exists to fill stay above the fold.
+        static let thumbnailHeight: CGFloat = 140
+    }
+
     enum Form {
         static let noteEditorMinimumHeight: CGFloat = 96
     }
