@@ -20,4 +20,5 @@ enum SystemImage {
     static let archiveExport = "arrow.up.doc"
     static let archiveImport = "arrow.down.doc"
     static let settings = "gearshape"
+    static let checkmark = "checkmark"
 }

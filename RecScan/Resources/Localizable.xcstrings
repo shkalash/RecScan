@@ -254,6 +254,39 @@
         }
       }
     },
+    "currency.search.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search code or name"
+          }
+        }
+      }
+    },
+    "currency.section.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Currencies"
+          }
+        }
+      }
+    },
+    "currency.section.common": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Common"
+          }
+        }
+      }
+    },
     "detail.action.delete": {
       "extractionState": "manual",
       "localizations": {

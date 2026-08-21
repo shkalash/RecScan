@@ -15,12 +15,13 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("settings.currency.default", selection: currencyBinding) {
-                        ForEach(Self.currencyCodes, id: \.self) { code in
-                            Text(Self.label(for: code)).tag(code)
+                    NavigationLink {
+                        CurrencyPickerView(selection: currencyBinding)
+                    } label: {
+                        LabeledContent("settings.currency.default") {
+                            Text(currencyBinding.wrappedValue).monospaced()
                         }
                     }
-                    .pickerStyle(.navigationLink)
                 } header: {
                     Text("settings.section.currency")
                 } footer: {
@@ -48,19 +49,6 @@ struct SettingsView: View {
         )
     }
 
-    // MARK: - Currency list
-
-    private static let currencyCodes: [String] = {
-        let resolved = AppSettings.defaultCurrencyCode()
-        // The active currency is guaranteed present, otherwise the Picker has no row
-        // matching its selection and silently renders empty.
-        return Array(Set(Locale.commonISOCurrencyCodes).union([resolved])).sorted()
-    }()
-
-    private static func label(for code: String) -> String {
-        guard let name = Locale.current.localizedString(forCurrencyCode: code) else { return code }
-        return "\(code) — \(name)"
-    }
 }
 
 #if DEBUG

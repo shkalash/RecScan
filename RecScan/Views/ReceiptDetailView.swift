@@ -107,9 +107,11 @@ struct ReceiptDetailView: View {
                     edit.amount = DecimalParsing.decimal(from: text)
                 }
 
-            Picker("detail.field.currency", selection: currencyBinding) {
-                ForEach(Self.currencyCodes, id: \.self) { code in
-                    Text(code).tag(code)
+            NavigationLink {
+                CurrencyPickerView(selection: currencyBinding)
+            } label: {
+                LabeledContent("detail.field.currency") {
+                    Text(currencyBinding.wrappedValue).monospaced()
                 }
             }
         }
@@ -218,9 +220,6 @@ struct ReceiptDetailView: View {
     }
 
     // MARK: - Constants
-
-    /// ISO codes offered by the currency picker.
-    private static let currencyCodes: [String] = Locale.commonISOCurrencyCodes
 
     private static var defaultCurrencyCode: String {
         AppSettings.defaultCurrencyCode()
