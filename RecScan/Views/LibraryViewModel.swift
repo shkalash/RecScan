@@ -191,6 +191,37 @@ final class LibraryViewModel {
         }
     }
 
+    /// Imports anything the share extension left behind.
+    ///
+    /// Files are removed only after the import succeeds, so a failure means the next
+    /// foreground tries again rather than quietly discarding what was shared.
+    func drainSharedInbox(using store: any ReceiptStoring) async {
+        let pending = SharedInbox.pendingURLs()
+        guard !pending.isEmpty else { return }
+
+        isImporting = true
+        defer { isImporting = false }
+
+        var items: [ReceiptImportItem] = []
+        for url in pending {
+            items.append(contentsOf: ReceiptImportReader.items(atFileURL: url))
+        }
+        guard !items.isEmpty else {
+            SharedInbox.remove(pending)
+            return
+        }
+
+        do {
+            let created = try await store.importItems(items)
+            let all = try await store.allReceipts()
+            let ids = Set(created)
+            pendingReview = all.filter { ids.contains($0.id) }
+            SharedInbox.remove(pending)
+        } catch {
+            presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
+        }
+    }
+
     /// Whether a handed-over file is something this app should act on.
     func canImport(_ url: URL) -> Bool {
         guard let type = UTType(filenameExtension: url.pathExtension) else { return false }

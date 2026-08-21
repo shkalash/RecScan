@@ -13,6 +13,7 @@ struct LibraryView: View {
 
     @State private var model = LibraryViewModel()
     @Environment(\.receiptStore) private var receiptStore
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -27,6 +28,13 @@ struct LibraryView: View {
                     ReceiptDetailView(receipt: receipt)
                 }
                 .overlay { importProgress }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Drained on becoming active rather than at launch: a share happens while the
+            // app is already backgrounded, and waiting for a cold start would leave
+            // receipts sitting in the inbox indefinitely.
+            guard phase == .active else { return }
+            Task { await model.drainSharedInbox(using: receiptStore) }
         }
         .task {
             #if DEBUG
