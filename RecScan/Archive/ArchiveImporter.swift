@@ -35,6 +35,8 @@ struct ArchiveImporter: Sendable {
             .decode(ArchiveManifest.self, from: manifestData) else {
             throw ArchiveError.manifestUnreadable
         }
+        // Older archives are read, not refused: v1 simply lacks categories and the
+        // review flag, and its optional keys decode as absent.
         guard manifest.formatVersion <= ArchiveManifest.currentFormatVersion else {
             throw ArchiveError.unsupportedFormatVersion(
                 found: manifest.formatVersion,

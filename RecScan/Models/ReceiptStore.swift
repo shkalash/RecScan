@@ -204,9 +204,48 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
     /// Images are written before the row is touched, for the same reason capture does it
     /// that way: a stray file with no row is invisible, whereas a row pointing at a file
     /// that was never written renders as a permanently broken receipt.
+    func allCategories() async throws -> [ArchiveManifest.Category] {
+        try modelContext.fetch(FetchDescriptor<ReceiptCategory>())
+            .map { ArchiveManifest.Category(id: $0.id, name: $0.name) }
+    }
+
+    /// Reconciles archived categories with the local ones.
+    ///
+    /// Matching is by **name**, not id: two devices that both created "Fuel" have two
+    /// different ids for the same thing, and importing by id alone would leave a library
+    /// with two identical-looking categories. An archived category whose name is already
+    /// present is mapped onto the local one; anything genuinely new is created with the
+    /// id it arrived with, so re-importing the same archive is still a no-op.
+    ///
+    /// - Returns: archived id → local id, for rewriting the receipts that follow.
+    private func reconcile(_ categories: [ArchiveManifest.Category]) throws -> [UUID: UUID] {
+        guard !categories.isEmpty else { return [:] }
+
+        var existing = try modelContext.fetch(FetchDescriptor<ReceiptCategory>())
+        var mapping: [UUID: UUID] = [:]
+
+        for archived in categories {
+            let key = ReceiptCategory.matchingKey(for: archived.name)
+            if let match = existing.first(where: { ReceiptCategory.matchingKey(for: $0.name) == key }) {
+                mapping[archived.id] = match.id
+                continue
+            }
+            let created = ReceiptCategory(id: archived.id, name: archived.name)
+            modelContext.insert(created)
+            existing.append(created)
+            mapping[archived.id] = created.id
+        }
+
+        return mapping
+    }
+
     @discardableResult
-    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult {
+    func importArchived(
+        _ receipts: [ArchiveImporter.StagedReceipt],
+        categories: [ArchiveManifest.Category] = []
+    ) async throws -> ArchiveImportResult {
         var result = ArchiveImportResult()
+        let categoryMapping = try reconcile(categories)
 
         for staged in receipts {
             let entry = staged.entry
@@ -235,15 +274,19 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
 
             case .insert:
                 let relativePath = try fileStore.write(imageData, for: entry.id)
-                modelContext.insert(makeReceipt(from: entry, relativePath: relativePath))
+                modelContext.insert(
+                    makeReceipt(from: entry, relativePath: relativePath, categoryMapping: categoryMapping)
+                )
                 result.inserted += 1
 
             case .update:
                 let relativePath = try fileStore.write(imageData, for: entry.id)
                 if let existing {
-                    apply(entry, to: existing, relativePath: relativePath)
+                    apply(entry, to: existing, relativePath: relativePath, categoryMapping: categoryMapping)
                 } else {
-                    modelContext.insert(makeReceipt(from: entry, relativePath: relativePath))
+                    modelContext.insert(
+                        makeReceipt(from: entry, relativePath: relativePath, categoryMapping: categoryMapping)
+                    )
                 }
                 result.updated += 1
             }
@@ -260,7 +303,17 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         return result
     }
 
-    private func makeReceipt(from entry: ArchiveManifest.Entry, relativePath: String) -> Receipt {
+    /// Local id for an archived category reference.
+    private func localCategoryID(for archived: UUID?, mapping: [UUID: UUID]) -> UUID? {
+        guard let archived else { return nil }
+        return mapping[archived] ?? archived
+    }
+
+    private func makeReceipt(
+        from entry: ArchiveManifest.Entry,
+        relativePath: String,
+        categoryMapping: [UUID: UUID]
+    ) -> Receipt {
         Receipt(
             id: entry.id,
             capturedAt: entry.capturedAt,
@@ -274,6 +327,8 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             ocrText: entry.ocrText,
             groupID: entry.groupID,
             pageIndex: entry.pageIndex,
+            categoryID: localCategoryID(for: entry.categoryID, mapping: categoryMapping),
+            needsReview: entry.requiresReview,
             searchIndex: ReceiptSearchIndex.make(
                 merchant: entry.merchant,
                 note: entry.note,
@@ -282,7 +337,12 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         )
     }
 
-    private func apply(_ entry: ArchiveManifest.Entry, to receipt: Receipt, relativePath: String) {
+    private func apply(
+        _ entry: ArchiveManifest.Entry,
+        to receipt: Receipt,
+        relativePath: String,
+        categoryMapping: [UUID: UUID]
+    ) {
         receipt.capturedAt = entry.capturedAt
         receipt.createdAt = entry.createdAt
         receipt.modifiedAt = entry.modifiedAt
@@ -294,6 +354,8 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         receipt.ocrText = entry.ocrText
         receipt.groupID = entry.groupID
         receipt.pageIndex = entry.pageIndex
+        receipt.categoryID = localCategoryID(for: entry.categoryID, mapping: categoryMapping)
+        receipt.needsReview = entry.requiresReview
         receipt.searchIndex = ReceiptSearchIndex.make(
             merchant: entry.merchant,
             note: entry.note,

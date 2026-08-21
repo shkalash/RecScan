@@ -26,7 +26,15 @@ struct ArchiveExporter: Sendable {
     ///
     /// As with the PDF, the file must stay alive until the share sheet is done with it —
     /// hand over the URL, never in-memory `Data`.
-    func makeArchive(receipts: [ReceiptSnapshot], exportedAt: Date = Date()) throws -> URL {
+    ///
+    /// - Parameter categories: every category in the library. Only those actually used by
+    ///   the exported receipts are written, so an archive of one month does not carry a
+    ///   vocabulary it never refers to.
+    func makeArchive(
+        receipts: [ReceiptSnapshot],
+        categories: [ArchiveManifest.Category] = [],
+        exportedAt: Date = Date()
+    ) throws -> URL {
         guard !receipts.isEmpty else { throw ArchiveError.nothingToExport }
 
         let destination = FileManager.default.temporaryDirectory.appending(
@@ -60,7 +68,12 @@ struct ArchiveExporter: Sendable {
             entries.append(ArchiveManifest.Entry(receipt, fileName: path))
         }
 
-        let manifest = ArchiveManifest(exportedAt: exportedAt, entries: entries)
+        let used = Set(entries.compactMap(\.categoryID))
+        let manifest = ArchiveManifest(
+            exportedAt: exportedAt,
+            entries: entries,
+            categories: categories.filter { used.contains($0.id) }
+        )
         let manifestData = try ArchiveManifest.makeEncoder().encode(manifest)
         try archive.addEntry(
             with: ArchiveManifest.Layout.manifestFileName,

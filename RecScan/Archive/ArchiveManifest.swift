@@ -31,6 +31,14 @@ struct ArchiveManifest: Codable, Equatable {
         let ocrText: String?
         let groupID: UUID?
         let pageIndex: Int
+        /// Points at an entry in the manifest's `categories`.
+        let categoryID: UUID?
+        /// Optional so a v1 archive, which has no such key, still decodes. Read through
+        /// `requiresReview`.
+        let needsReview: Bool?
+
+        /// v1 archives predate the flag; absent means "already reviewed".
+        var requiresReview: Bool { needsReview ?? false }
 
         var decimalAmount: Decimal? {
             guard let amount else { return nil }
@@ -38,20 +46,34 @@ struct ArchiveManifest: Codable, Equatable {
         }
     }
 
+    /// One category, so a fresh install can recreate the names receipts refer to.
+    ///
+    /// Without these an archive restored into an empty app would carry category ids
+    /// pointing at nothing, and every receipt would come back uncategorised.
+    struct Category: Codable, Equatable {
+        let id: UUID
+        let name: String
+    }
+
     /// Bumped when the layout changes in a way an older importer could misread.
     let formatVersion: Int
     let application: String
     let exportedAt: Date
     let entries: [Entry]
+    /// Optional so a v1 archive still decodes; read through `categoryList`.
+    let categories: [Category]?
 
-    static let currentFormatVersion = 1
+    var categoryList: [Category] { categories ?? [] }
+
+    static let currentFormatVersion = 2
     static let applicationName = "RecScan"
 
-    init(exportedAt: Date, entries: [Entry]) {
+    init(exportedAt: Date, entries: [Entry], categories: [Category] = []) {
         formatVersion = Self.currentFormatVersion
         application = Self.applicationName
         self.exportedAt = exportedAt
         self.entries = entries
+        self.categories = categories
     }
 }
 
@@ -95,7 +117,9 @@ extension ArchiveManifest.Entry {
             note: receipt.note,
             ocrText: receipt.ocrText,
             groupID: receipt.groupID,
-            pageIndex: receipt.pageIndex
+            pageIndex: receipt.pageIndex,
+            categoryID: receipt.categoryID,
+            needsReview: receipt.needsReview
         )
     }
 }

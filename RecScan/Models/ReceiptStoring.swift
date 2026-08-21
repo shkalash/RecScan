@@ -53,5 +53,11 @@ protocol ReceiptStoring: Sendable {
     /// Identity is the receipt's `UUID`, so importing the same archive twice changes
     /// nothing the second time. See `ArchiveMergePolicy` for the rules.
     @discardableResult
-    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult
+    func importArchived(
+        _ receipts: [ArchiveImporter.StagedReceipt],
+        categories: [ArchiveManifest.Category]
+    ) async throws -> ArchiveImportResult
+
+    /// Every category, for export.
+    func allCategories() async throws -> [ArchiveManifest.Category]
 }

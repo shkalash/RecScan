@@ -146,10 +146,11 @@ final class LibraryViewModel {
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let staged = try await Task.detached(priority: .userInitiated) {
-                try ArchiveImporter().read(archiveAt: url).receipts
+            let contents = try await Task.detached(priority: .userInitiated) {
+                let read = try ArchiveImporter().read(archiveAt: url)
+                return (read.receipts, read.manifest.categoryList)
             }.value
-            importResult = try await store.importArchived(staged)
+            importResult = try await store.importArchived(contents.0, categories: contents.1)
             if isInbox { try? FileManager.default.removeItem(at: url) }
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importArchiveFailed, error: error)

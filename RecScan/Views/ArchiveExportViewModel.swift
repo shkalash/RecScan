@@ -37,8 +37,10 @@ final class ArchiveExportViewModel {
             case .entireLibrary: try await store.allReceipts()
             case .currentSelection: selection
             }
+            let categories = try await store.allCategories()
             generatedURL = try await Task.detached(priority: .userInitiated) {
-                try ArchiveExporter(fileStore: fileStore).makeArchive(receipts: receipts)
+                try ArchiveExporter(fileStore: fileStore)
+                    .makeArchive(receipts: receipts, categories: categories)
             }.value
         } catch {
             presentedError = PresentableError(titleKey: "error.archive.export.title", error: error)

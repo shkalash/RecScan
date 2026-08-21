@@ -58,9 +58,17 @@ private actor SpyReceiptStore: ReceiptStoring {
     }
 
     @discardableResult
-    func importArchived(_ receipts: [ArchiveImporter.StagedReceipt]) async throws -> ArchiveImportResult {
+    func importArchived(
+        _ receipts: [ArchiveImporter.StagedReceipt],
+        categories: [ArchiveManifest.Category]
+    ) async throws -> ArchiveImportResult {
         if case .fail(let error) = behaviour { throw error }
         return ArchiveImportResult(inserted: receipts.count)
+    }
+
+    func allCategories() async throws -> [ArchiveManifest.Category] {
+        if case .fail(let error) = behaviour { throw error }
+        return []
     }
 }
 

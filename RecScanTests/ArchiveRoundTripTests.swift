@@ -94,7 +94,7 @@ extension ImagePipelineSuite {
             )
 
             let staged = try ArchiveImporter().read(archiveAt: archive).receipts
-            let result = try await september.store.importArchived(staged)
+            let result = try await september.store.importArchived(staged, categories: [])
 
             #expect(result.inserted == 2)
             #expect(result.skipped == 0)
@@ -111,8 +111,8 @@ extension ImagePipelineSuite {
             let target = try Library()
             let staged = try ArchiveImporter().read(archiveAt: archive).receipts
 
-            let first = try await target.store.importArchived(staged)
-            let second = try await target.store.importArchived(staged)
+            let first = try await target.store.importArchived(staged, categories: [])
+            let second = try await target.store.importArchived(staged, categories: [])
 
             #expect(first.inserted == 2)
             #expect(second.inserted == 0)
@@ -140,7 +140,7 @@ extension ImagePipelineSuite {
 
             let target = try Library()
             let staged = try ArchiveImporter().read(archiveAt: archive).receipts
-            _ = try await target.store.importArchived(staged)
+            _ = try await target.store.importArchived(staged, categories: [])
 
             let restored = try #require(try target.receipts().first)
             #expect(restored.id == id)
@@ -173,7 +173,7 @@ extension ImagePipelineSuite {
             )
 
             let staged = try ArchiveImporter().read(archiveAt: archive).receipts
-            let result = try await source.store.importArchived(staged)
+            let result = try await source.store.importArchived(staged, categories: [])
 
             #expect(result.skipped == 1)
             #expect(result.updated == 0)
@@ -197,7 +197,7 @@ extension ImagePipelineSuite {
             }
 
             let staged = try ArchiveImporter().read(archiveAt: archive).receipts
-            let result = try await library.store.importArchived(staged)
+            let result = try await library.store.importArchived(staged, categories: [])
 
             #expect(result.updated == 1)
             #expect(try library.fileStore.fullResolutionImage(atRelativePath: path).size.width > 0)
@@ -211,17 +211,101 @@ extension ImagePipelineSuite {
                 capturedAt: .now, createdAt: .now, modifiedAt: .now,
                 fileName: "Receipts/gone.heic",
                 merchant: nil, amount: nil, currencyCode: nil,
-                note: nil, ocrText: nil, groupID: nil, pageIndex: 0
+                note: nil, ocrText: nil, groupID: nil, pageIndex: 0,
+                categoryID: nil, needsReview: nil
             )
 
             let result = try await library.store.importArchived(
-                [ArchiveImporter.StagedReceipt(entry: entry, imageData: nil)]
+                [ArchiveImporter.StagedReceipt(entry: entry, imageData: nil)], categories: []
             )
 
             #expect(result.missingImages == 1)
             #expect(result.inserted == 0)
             // A row with no image would render as a permanently broken receipt.
             #expect(try library.count() == 0)
+        }
+
+        @Test("Categories survive into a library that has none")
+        func categoriesAreRecreated() async throws {
+            let source = try Library()
+            let categoryID = try await source.store.createCategory(named: "Fuel")
+            let receiptID = try #require(try await source.store.importScan(pages: [page()], capturedAt: .now).first)
+            try await source.store.apply(
+                ReceiptEdit(capturedAt: .now, merchant: nil, amount: nil,
+                            currencyCode: nil, note: nil, categoryID: categoryID),
+                toReceiptWithID: receiptID
+            )
+            let archive = try ArchiveExporter(fileStore: source.fileStore).makeArchive(
+                receipts: try await source.store.allReceipts(),
+                categories: try await source.store.allCategories()
+            )
+
+            let target = try Library()
+            let read = try ArchiveImporter().read(archiveAt: archive)
+            _ = try await target.store.importArchived(read.receipts, categories: read.manifest.categoryList)
+
+            let restored = try #require(try target.receipts().first)
+            let categories = try ModelContext(target.container).fetch(FetchDescriptor<ReceiptCategory>())
+            #expect(categories.map(\.name) == ["Fuel"])
+            #expect(restored.categoryID == categories.first?.id)
+        }
+
+        @Test("An archived category matching an existing name is merged, not duplicated")
+        func categoriesMergeByName() async throws {
+            let source = try Library()
+            let sourceCategory = try await source.store.createCategory(named: "Fuel")
+            let receiptID = try #require(try await source.store.importScan(pages: [page()], capturedAt: .now).first)
+            try await source.store.apply(
+                ReceiptEdit(capturedAt: .now, merchant: nil, amount: nil,
+                            currencyCode: nil, note: nil, categoryID: sourceCategory),
+                toReceiptWithID: receiptID
+            )
+            let archive = try ArchiveExporter(fileStore: source.fileStore).makeArchive(
+                receipts: try await source.store.allReceipts(),
+                categories: try await source.store.allCategories()
+            )
+
+            // A different device already has its own "Fuel" -- same name, different id.
+            let target = try Library()
+            let localCategory = try await target.store.createCategory(named: "fuel")
+
+            let read = try ArchiveImporter().read(archiveAt: archive)
+            _ = try await target.store.importArchived(read.receipts, categories: read.manifest.categoryList)
+
+            let categories = try ModelContext(target.container).fetch(FetchDescriptor<ReceiptCategory>())
+            #expect(categories.count == 1)
+            #expect(try target.receipts().first?.categoryID == localCategory)
+        }
+
+        @Test("Only categories the exported receipts actually use are written")
+        func unusedCategoriesAreNotExported() async throws {
+            let source = try Library()
+            _ = try await source.store.createCategory(named: "Unused")
+            _ = try await source.store.importScan(pages: [page()], capturedAt: .now)
+
+            let archive = try ArchiveExporter(fileStore: source.fileStore).makeArchive(
+                receipts: try await source.store.allReceipts(),
+                categories: try await source.store.allCategories()
+            )
+
+            let read = try ArchiveImporter().read(archiveAt: archive)
+            #expect(read.manifest.categoryList.isEmpty)
+        }
+
+        @Test("The review flag survives the round trip")
+        func needsReviewSurvives() async throws {
+            let source = try Library()
+            _ = try await source.store.importScan(pages: [page()], capturedAt: .now)
+            let archive = try ArchiveExporter(fileStore: source.fileStore).makeArchive(
+                receipts: try await source.store.allReceipts(),
+                categories: []
+            )
+
+            let target = try Library()
+            let read = try ArchiveImporter().read(archiveAt: archive)
+            _ = try await target.store.importArchived(read.receipts, categories: [])
+
+            #expect(try target.receipts().first?.needsReview == true)
         }
 
         @Test("Multi-page groups survive the round trip")
@@ -233,7 +317,7 @@ extension ImagePipelineSuite {
 
             let target = try Library()
             _ = try await target.store.importArchived(
-                try ArchiveImporter().read(archiveAt: archive).receipts
+                try ArchiveImporter().read(archiveAt: archive).receipts, categories: []
             )
 
             let restored = try target.receipts().sorted { $0.pageIndex < $1.pageIndex }
