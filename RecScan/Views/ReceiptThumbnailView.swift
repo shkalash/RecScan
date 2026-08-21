@@ -14,15 +14,24 @@ struct ReceiptThumbnailView: View {
     let receipt: Receipt
     let isSelectionActive: Bool
     let isSelected: Bool
+    /// Exact tile edge, computed by the grid. Passed in rather than derived so the cell
+    /// never depends on an unspecified height proposal.
+    let side: CGFloat
 
     @Environment(\.imageFileStore) private var imageFileStore
     @State private var thumbnail: UIImage?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            // The thumbnail is already square and top-cropped (see
+            // `ImageCodec.squareThumbnail`), so the tile needs no aspect-ratio logic at
+            // all: `resizable()` plus an exact frame scales it to the tile and nothing
+            // has to be inferred. Every aspect-ratio-based version of this collapsed,
+            // because a LazyVGrid proposes an unspecified height and the modifier has
+            // nothing to resolve a square against.
             thumbnailContent
-                .frame(maxWidth: .infinity)
-                .aspectRatio(LayoutMetrics.Grid.itemAspectRatio, contentMode: .fit)
+                .frame(width: side, height: side)
+                .background(.quaternary)
                 .clipShape(RoundedRectangle(cornerRadius: LayoutMetrics.Grid.cornerRadius))
                 .overlay {
                     RoundedRectangle(cornerRadius: LayoutMetrics.Grid.cornerRadius)
@@ -50,7 +59,6 @@ struct ReceiptThumbnailView: View {
         if let thumbnail {
             Image(uiImage: thumbnail)
                 .resizable()
-                .scaledToFill()
         } else {
             Rectangle()
                 .fill(.quaternary)

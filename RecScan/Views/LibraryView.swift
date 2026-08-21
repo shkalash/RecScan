@@ -27,6 +27,13 @@ struct LibraryView: View {
                 }
                 .overlay { importProgress }
         }
+        .task {
+            #if DEBUG
+            if let count = DebugSampleData.requestedCount {
+                await DebugSampleData.seed(count: count, store: receiptStore)
+            }
+            #endif
+        }
         .fullScreenCover(isPresented: $model.isPresentingScanner) { scannerCover }
         .sheet(isPresented: $model.isPresentingFilter) {
             FilterView(filter: $model.filter)

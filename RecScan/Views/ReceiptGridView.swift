@@ -54,6 +54,27 @@ struct ReceiptGridView: View {
     // MARK: - Content
 
     private var grid: some View {
+        // The tile size is computed here rather than left to `.adaptive` columns.
+        // A LazyVGrid proposes an unspecified height to its cells, so anything that
+        // relies on `.aspectRatio` to derive a square has nothing to resolve against
+        // and silently collapses. A fixed column width removes the guesswork.
+        GeometryReader { proxy in
+            let side = Self.tileSide(forAvailableWidth: proxy.size.width)
+            gridContent(tileSide: side)
+        }
+    }
+
+    /// Largest tile that fits a whole number of columns, never below the minimum.
+    static func tileSide(forAvailableWidth width: CGFloat) -> CGFloat {
+        let spacing = LayoutMetrics.Grid.itemSpacing
+        let usable = width - LayoutMetrics.Grid.horizontalPadding * 2
+        guard usable > 0 else { return LayoutMetrics.Grid.minimumItemWidth }
+
+        let columns = max(1, Int((usable + spacing) / (LayoutMetrics.Grid.minimumItemWidth + spacing)))
+        return (usable - spacing * CGFloat(columns - 1)) / CGFloat(columns)
+    }
+
+    private func gridContent(tileSide: CGFloat) -> some View {
         ScrollView {
             LazyVStack(
                 alignment: .leading,
@@ -62,12 +83,15 @@ struct ReceiptGridView: View {
             ) {
                 ForEach(sections) { section in
                     Section {
-                        LazyVGrid(columns: columns, spacing: LayoutMetrics.Grid.itemSpacing) {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: tileSide), spacing: LayoutMetrics.Grid.itemSpacing)],
+                            spacing: LayoutMetrics.Grid.itemSpacing
+                        ) {
                             ForEach(section.items) { receipt in
-                                cell(for: receipt)
+                                cell(for: receipt, tileSide: tileSide)
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, LayoutMetrics.Grid.horizontalPadding)
                     } header: {
                         monthHeader(for: section.id)
                     }
@@ -78,11 +102,12 @@ struct ReceiptGridView: View {
     }
 
     @ViewBuilder
-    private func cell(for receipt: Receipt) -> some View {
+    private func cell(for receipt: Receipt, tileSide: CGFloat) -> some View {
         let thumbnail = ReceiptThumbnailView(
             receipt: receipt,
             isSelectionActive: model.isSelecting,
-            isSelected: model.selection.contains(receipt.id)
+            isSelected: model.selection.contains(receipt.id),
+            side: tileSide
         )
 
         if model.isSelecting {
@@ -121,15 +146,6 @@ struct ReceiptGridView: View {
     }
 
     // MARK: - Layout
-
-    private var columns: [GridItem] {
-        [
-            GridItem(
-                .adaptive(minimum: LayoutMetrics.Grid.minimumItemWidth),
-                spacing: LayoutMetrics.Grid.itemSpacing
-            )
-        ]
-    }
 
     private var sections: [MonthSection<Receipt>] {
         MonthGrouper.group(receipts) { $0.capturedAt }

@@ -128,6 +128,56 @@ enum ImageCodec {
         return image
     }
 
+    /// Produces a **square** thumbnail showing the top of the receipt.
+    ///
+    /// ## Why the crop is a redraw and not `CGImage.cropping(to:)`
+    /// `CGImageSourceCreateThumbnailAtIndex` hands back a CGImage that *reports* the
+    /// thumbnail's dimensions but is lazily backed by the full-resolution buffer.
+    /// `cropping(to:)` works in backing-store coordinates, so a 186x186 rect cut the top
+    /// left corner of the original 620x1000 image rather than the top of the 186x300
+    /// thumbnail — which rendered as a wildly magnified sliver. Drawing into an explicit
+    /// context forces materialisation and makes the result independent of how the
+    /// source happened to be decoded.
+    ///
+    /// Top rather than centre: a receipt prints its merchant name at the top, which is
+    /// the one thing that makes the grid scannable.
+    static func squareThumbnail(at url: URL, maxEdge: CGFloat) throws -> UIImage {
+        let full = try thumbnail(at: url, maxEdge: maxEdge)
+        guard let cgImage = full.cgImage else { throw StorageError.imageHasNoBitmap }
+
+        let side = min(cgImage.width, cgImage.height)
+        guard side > 0 else { throw StorageError.imageHasNoBitmap }
+
+        guard let context = CGContext(
+            data: nil,
+            width: side,
+            height: side,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else {
+            throw StorageError.imageHasNoBitmap
+        }
+        context.interpolationQuality = .high
+
+        // A CGContext has its origin at the bottom left, and a CGImage is drawn with its
+        // top edge at the rect's maxY. Placing the rect so maxY == side aligns the
+        // receipt's top with the top of the square.
+        context.draw(
+            cgImage,
+            in: CGRect(
+                x: CGFloat(side - cgImage.width) / 2,
+                y: CGFloat(side - cgImage.height),
+                width: CGFloat(cgImage.width),
+                height: CGFloat(cgImage.height)
+            )
+        )
+
+        guard let square = context.makeImage() else { throw StorageError.imageHasNoBitmap }
+        return UIImage(cgImage: square)
+    }
+
     /// Produces a thumbnail directly from the file.
     ///
     /// `CGImageSourceCreateThumbnailAtIndex` decodes only what it needs, so the

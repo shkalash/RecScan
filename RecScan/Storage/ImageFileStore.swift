@@ -75,7 +75,7 @@ struct ImageFileStore: ImageFileStoring {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             throw StorageError.fileMissing(relativePath: relativePath)
         }
-        let image = try ImageCodec.thumbnail(at: url, maxEdge: StorageConstants.thumbnailEdgePixels)
+        let image = try ImageCodec.squareThumbnail(at: url, maxEdge: StorageConstants.thumbnailEdgePixels)
         thumbnailCache.store(image, for: id)
         return image
     }

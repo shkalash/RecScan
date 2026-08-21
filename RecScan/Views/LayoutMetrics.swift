@@ -7,13 +7,13 @@ import CoreGraphics
 enum LayoutMetrics {
 
     enum Grid {
-        /// Smallest acceptable thumbnail width; the adaptive grid fits as many as
-        /// will fit at or above this width.
-        static let minimumItemWidth: CGFloat = 108
-        static let itemSpacing: CGFloat = 10
+        /// Smallest acceptable tile width; the adaptive grid fits as many as
+        /// will fit at or above this width. Sized for roughly four per row on a
+        /// standard iPhone.
+        static let minimumItemWidth: CGFloat = 84
+        static let itemSpacing: CGFloat = 8
+        static let horizontalPadding: CGFloat = 16
         static let sectionSpacing: CGFloat = 20
-        /// Receipts are taller than they are wide; this is the cell's aspect ratio.
-        static let itemAspectRatio: CGFloat = 0.72
         static let cornerRadius: CGFloat = 10
         static let selectionBorderWidth: CGFloat = 3
         static let selectionBadgePadding: CGFloat = 6
