@@ -88,8 +88,9 @@ struct ReceiptThumbnailView: View {
     /// you have not looked at yet.
     private var detailPill: some View {
         VStack(spacing: LayoutMetrics.Grid.Pill.spacing) {
+            // Both lines carry the same weight: the date is not supporting detail for
+            // the amount, it is the other half of what the tile is being read for.
             Text(ReceiptFormatting.tileDate(for: receipt.capturedAt))
-                .foregroundStyle(.secondary)
             amountText
         }
         .font(.caption2)
@@ -99,10 +100,14 @@ struct ReceiptThumbnailView: View {
         .padding(.horizontal, LayoutMetrics.Grid.Pill.horizontalInset)
         .padding(.vertical, LayoutMetrics.Grid.Pill.verticalInset)
         // A rounded rectangle, not a capsule: two lines through a capsule leaves ends so
-        // round they read as a lozenge rather than a label.
+        // round they read as a lozenge rather than a label. Continuous curvature, which
+        // is the corner iOS draws everywhere else.
         .background(
             .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: LayoutMetrics.Grid.Pill.cornerRadius)
+            in: RoundedRectangle(
+                cornerRadius: LayoutMetrics.Grid.Pill.cornerRadius,
+                style: .continuous
+            )
         )
         .padding(LayoutMetrics.Grid.Pill.padding)
     }
