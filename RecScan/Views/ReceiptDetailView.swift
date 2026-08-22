@@ -70,7 +70,7 @@ struct ReceiptDetailView: View {
         }
         .task { await loadImage() }
         .task { await loadAmountCandidates() }
-        .fullScreenCover(isPresented: $isZooming) { zoomCover }
+        .fullScreenCover(isPresented: $isZooming) { ZoomCover(relativePath: receipt.relativePath) }
         .confirmationDialog(
             "detail.delete.confirm.title",
             isPresented: $isConfirmingDeletion,
@@ -177,24 +177,6 @@ struct ReceiptDetailView: View {
         Section {
             Button("detail.action.delete", role: .destructive) {
                 isConfirmingDeletion = true
-            }
-        }
-    }
-
-    private var zoomCover: some View {
-        NavigationStack {
-            Group {
-                if let image {
-                    ZoomableImageView(image: image)
-                } else {
-                    ProgressView()
-                }
-            }
-            .ignoresSafeArea(edges: .bottom)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("common.done") { isZooming = false }
-                }
             }
         }
     }

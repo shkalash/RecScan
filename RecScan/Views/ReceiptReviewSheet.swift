@@ -52,6 +52,10 @@ struct ReceiptReviewSheet: View {
                 }
             }
             .errorAlert($model.presentedError)
+            // Attached to the stack, never to a row inside the Form. See `ZoomCover`.
+            .fullScreenCover(item: $model.zoomedImage) { target in
+                ZoomCover(relativePath: target.relativePath)
+            }
             // Recognition runs one receipt at a time behind this sheet, so suggestions
             // arrive in instalments rather than all at once.
             .onChange(of: recognizedText, initial: true) { _, texts in
@@ -88,7 +92,9 @@ struct ReceiptReviewSheet: View {
 
     private func section(for entry: ReceiptReviewViewModel.Entry, at index: Int) -> some View {
         Section {
-            ReceiptReviewThumbnail(relativePath: entry.relativePath)
+            ReceiptReviewThumbnail(relativePath: entry.relativePath) {
+                model.zoomedImage = ZoomCover.Target(id: entry.relativePath)
+            }
 
             DatePicker(
                 "detail.field.date",
@@ -150,25 +156,25 @@ struct ReceiptReviewSheet: View {
 /// The receipt being reviewed, at a glance.
 ///
 /// Small on purpose: this is a form, and a full-height image would push every field the
-/// sheet exists to fill below the fold.
-/// The receipt image in the review sheet, tappable to read.
+/// sheet exists to fill below the fold. Filling in an amount means reading it off the
+/// receipt first, so tapping hands off to the full-screen reader.
 ///
-/// Filling in an amount means reading it off the receipt first, and the thumbnail is far
-/// too small for that — so it opens the same zoomable viewer the detail screen uses.
+/// The reader itself is **not** presented from here. This view is a row in a `Form`, and a
+/// presentation owned by a row is torn down when the row is — which took the enclosing
+/// sheet with it and lost every edit in the batch. The row only reports the tap; the sheet
+/// owns the presentation.
 private struct ReceiptReviewThumbnail: View {
 
     let relativePath: String
+    let onTap: () -> Void
 
     @Environment(\.imageFileStore) private var imageFileStore
     @State private var image: UIImage?
-    @State private var isZooming = false
 
     var body: some View {
         Group {
             if let image {
-                Button {
-                    isZooming = true
-                } label: {
+                Button(action: onTap) {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
@@ -197,23 +203,6 @@ private struct ReceiptReviewThumbnail: View {
             image = await Task.detached(priority: .userInitiated) {
                 try? store.fullResolutionImage(atRelativePath: path)
             }.value
-        }
-        .fullScreenCover(isPresented: $isZooming) {
-            NavigationStack {
-                Group {
-                    if let image {
-                        ZoomableImageView(image: image)
-                    } else {
-                        ProgressView()
-                    }
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("common.done") { isZooming = false }
-                    }
-                }
-            }
         }
     }
 }

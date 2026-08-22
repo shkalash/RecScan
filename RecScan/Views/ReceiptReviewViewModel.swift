@@ -34,6 +34,13 @@ final class ReceiptReviewViewModel {
     var sharedDate: Date
     var sharedCategoryID: UUID?
 
+    /// The receipt currently open full-screen, if any.
+    ///
+    /// Lives here rather than in the thumbnail row because the row is inside a `Form` and
+    /// is destroyed as it scrolls. A presentation owned by the row went down with it and
+    /// took the whole sheet -- and every unsaved edit -- with it.
+    var zoomedImage: ZoomCover.Target?
+
     private(set) var isSaving = false
     var presentedError: PresentableError?
 

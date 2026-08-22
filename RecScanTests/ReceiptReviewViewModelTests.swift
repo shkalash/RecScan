@@ -239,5 +239,42 @@ struct ReceiptReviewViewModelTests {
 
         #expect(model.entries[0].candidates.count == 5)
     }
-}
 
+    // MARK: - Reading a receipt full screen
+
+    /// Opening the reader used to destroy the batch. The thumbnail owned the presentation,
+    /// and it lives in a `Form` row -- a lazy container that discards rows as they scroll.
+    /// Tearing the row down tore down the sheet, and the sheet owns these edits.
+    ///
+    /// Keeping the state on the model is what makes that impossible: it outlives any row.
+    @Test("Opening and closing the reader leaves every edit intact")
+    func zoomingPreservesEdits() {
+        let receipts = [snapshot(), snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        model.setMerchant("Corner Store", at: 0)
+        model.updateAmountText("18.40", at: 1)
+
+        model.zoomedImage = ZoomCover.Target(id: receipts[0].relativePath)
+        model.zoomedImage = nil
+
+        #expect(model.entries.count == 2)
+        #expect(model.entries[0].edit.merchant == "Corner Store")
+        #expect(model.entries[1].edit.amount == Decimal(string: "18.40"))
+    }
+
+    @Test("The reader opens on the receipt that was tapped")
+    func zoomTargetsItsOwnReceipt() {
+        let receipts = [snapshot(), snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+
+        model.zoomedImage = ZoomCover.Target(id: receipts[1].relativePath)
+
+        #expect(model.zoomedImage?.relativePath == receipts[1].relativePath)
+    }
+
+    @Test("Nothing is open to begin with")
+    func nothingZoomedInitially() {
+        #expect(ReceiptReviewViewModel(receipts: [snapshot()]).zoomedImage == nil)
+    }
+
+}
