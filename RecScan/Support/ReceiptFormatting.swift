@@ -24,13 +24,15 @@ enum ReceiptFormatting {
         date.formatted(Date.FormatStyle(locale: locale).year().month().day())
     }
 
-    /// Day and month only, e.g. "12 Mar".
+    /// Numeric day and month, e.g. "12/03" or "03/12" depending on the locale.
     ///
-    /// For the grid tile, where the library is already sectioned by month and repeating
-    /// the year on every thumbnail would spend the little room there is on the one part
-    /// the reader already knows.
+    /// For the grid tile. The year is dropped because the library is already sectioned by
+    /// month, and the month is a numeral rather than a name because a name is too wide
+    /// for a thumbnail. `FormatStyle` puts the two in the locale's own order, so this
+    /// reads correctly without the caller deciding which comes first. Two digits
+    /// throughout, so every pill in a row is the same width.
     static func tileDate(for date: Date, locale: Locale = .current) -> String {
-        date.formatted(Date.FormatStyle(locale: locale).month(.abbreviated).day())
+        date.formatted(Date.FormatStyle(locale: locale).month(.twoDigits).day(.twoDigits))
     }
 
     /// An amount rendered in its own currency, or `nil` when there is no amount.

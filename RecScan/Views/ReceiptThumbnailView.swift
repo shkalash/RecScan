@@ -75,37 +75,50 @@ struct ReceiptThumbnailView: View {
 
     /// Date and amount along the bottom of the tile.
     ///
-    /// The library is already sectioned by month, so a day-and-month date plus the amount
-    /// turns the grid into something you can read a month's spending off without opening
-    /// anything.
+    /// The library is already sectioned by month, so a numeric day-and-month date plus
+    /// the amount turns the grid into something you can read a month's spending off
+    /// without opening anything.
+    ///
+    /// Stacked rather than side by side: one line made the pill wide enough to run the
+    /// width of the tile, which crowded the image it sits on. Two short lines keep it
+    /// small enough to read past.
     ///
     /// A receipt with no amount shows a dash rather than dropping the pill: a missing
     /// amount is the thing worth spotting, and an absent pill looks the same as a tile
     /// you have not looked at yet.
     private var detailPill: some View {
-        HStack(spacing: LayoutMetrics.Grid.Pill.spacing) {
+        VStack(spacing: LayoutMetrics.Grid.Pill.spacing) {
             Text(ReceiptFormatting.tileDate(for: receipt.capturedAt))
                 .foregroundStyle(.secondary)
-
-            if let amount = ReceiptFormatting.amount(
-                receipt.amount,
-                currencyCode: receipt.currencyCode,
-                defaultCode: AppSettings.defaultCurrencyCode()
-            ) {
-                Text(amount)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(LayoutMetrics.Grid.Pill.minimumScale)
-            } else {
-                Text(verbatim: Self.missingAmountMark)
-                    .foregroundStyle(.secondary)
-            }
+            amountText
         }
         .font(.caption2)
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(LayoutMetrics.Grid.Pill.minimumScale)
         .padding(.horizontal, LayoutMetrics.Grid.Pill.horizontalInset)
         .padding(.vertical, LayoutMetrics.Grid.Pill.verticalInset)
-        .background(.ultraThinMaterial, in: Capsule())
+        // A rounded rectangle, not a capsule: two lines through a capsule leaves ends so
+        // round they read as a lozenge rather than a label.
+        .background(
+            .ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: LayoutMetrics.Grid.Pill.cornerRadius)
+        )
         .padding(LayoutMetrics.Grid.Pill.padding)
+    }
+
+    @ViewBuilder
+    private var amountText: some View {
+        if let amount = ReceiptFormatting.amount(
+            receipt.amount,
+            currencyCode: receipt.currencyCode,
+            defaultCode: AppSettings.defaultCurrencyCode()
+        ) {
+            Text(amount)
+        } else {
+            Text(verbatim: Self.missingAmountMark)
+                .foregroundStyle(.secondary)
+        }
     }
 
     /// An en dash, not a localised string: it is a typographic mark for "nothing here",

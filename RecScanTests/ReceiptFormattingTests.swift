@@ -9,13 +9,20 @@ struct ReceiptFormattingTests {
     private let date = TestCalendar.date(year: 2026, month: 3, day: 12)
     private let british = Locale(identifier: "en_GB")
 
-    @Test("The tile date drops the year, which the month section already gives")
-    func tileDateHasNoYear() {
+    @Test("The tile date is numeric and drops the year")
+    func tileDateIsNumericAndYearless() {
         let formatted = ReceiptFormatting.tileDate(for: date, locale: british)
 
-        #expect(formatted.contains("12"))
-        #expect(formatted.contains("Mar"))
+        // A month name is too wide for a thumbnail, and the grid is already by month.
+        #expect(formatted == "12/03")
         #expect(!formatted.contains("2026"))
+    }
+
+    /// The order is the locale's, so the caller never has to decide which comes first.
+    @Test("The tile date follows the locale's own day/month order")
+    func tileDateFollowsLocaleOrder() {
+        #expect(ReceiptFormatting.tileDate(for: date, locale: Locale(identifier: "en_US")) == "03/12")
+        #expect(ReceiptFormatting.tileDate(for: date, locale: Locale(identifier: "en_GB")) == "12/03")
     }
 
     @Test("The full receipt date keeps the year")
