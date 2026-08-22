@@ -22,7 +22,13 @@ struct ArchiveImporter: Sendable {
     /// - Note: a URL from the document picker is security-scoped. The caller must have
     ///   started access before calling this and must stop it afterwards.
     func read(archiveAt url: URL) throws -> (manifest: ArchiveManifest, receipts: [StagedReceipt]) {
-        guard let archive = try? Archive(url: url, accessMode: .read) else {
+        // ZIPFoundation's underlying error is deliberately dropped: "not a readable zip"
+        // is the only thing the user can act on, and picking the wrong file is the only
+        // way to get here.
+        let archive: Archive
+        do {
+            archive = try Archive(url: url, accessMode: .read)
+        } catch {
             throw ArchiveError.unreadableArchive
         }
 
