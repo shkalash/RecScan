@@ -37,7 +37,7 @@ struct RecScanApp: App {
                 .task {
                     // Fire and forget: a failure here leaves the old fallback behaviour
                     // rather than blocking the library.
-                    try? await receiptStore.stampMissingCurrency()
+                    _ = try? await receiptStore.stampMissingCurrency()
                 }
         }
         .modelContainer(modelContainer)

@@ -27,6 +27,12 @@ struct ReceiptDetailView: View {
     @State private var isConfirmingDeletion = false
     @State private var presentedError: PresentableError?
     @State private var candidates: [AmountCandidate] = []
+    @State private var isConfirmingExit = false
+    @State private var isOfferingAutoSave = false
+
+    @AppStorage(AppSettings.Key.autoSaveOnDismiss)
+    private var autoSaveOnDismiss = AppSettings.autoSaveOnDismissDefault
+    @AppStorage(AppSettings.Key.hasOfferedAutoSave) private var hasOfferedAutoSave = false
 
     init(receipt: Receipt) {
         self.receipt = receipt
@@ -45,7 +51,18 @@ struct ReceiptDetailView: View {
         }
         .navigationTitle("detail.title")
         .navigationBarTitleDisplayMode(.inline)
+        // The system back button pops immediately and cannot be intercepted, so leaving
+        // has to go through a button of ours. Hiding it also disables the interactive
+        // swipe-back, which would otherwise be a second unguarded way out.
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    attemptToLeave()
+                } label: {
+                    Label("common.back", systemImage: SystemImage.back)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("common.save") { Task { await save() } }
                     .disabled(!hasUnsavedChanges)
@@ -65,6 +82,29 @@ struct ReceiptDetailView: View {
             Button("common.cancel", role: .cancel) {}
         } message: {
             Text("detail.delete.confirm.message")
+        }
+        .alert("detail.unsaved.title", isPresented: $isConfirmingExit) {
+            Button("common.save") {
+                Task {
+                    await save()
+                    // Only leave if the write actually landed; otherwise the alert has
+                    // closed over an error the user never sees and the edit is lost.
+                    if presentedError == nil { finishLeaving() }
+                }
+            }
+            Button("detail.unsaved.discard", role: .destructive) { finishLeaving() }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("detail.unsaved.message")
+        }
+        .alert("detail.autoSave.offer.title", isPresented: $isOfferingAutoSave) {
+            Button("detail.autoSave.offer.enable") {
+                autoSaveOnDismiss = true
+                dismiss()
+            }
+            Button("detail.autoSave.offer.decline", role: .cancel) { dismiss() }
+        } message: {
+            Text("detail.autoSave.offer.message")
         }
         .errorAlert($presentedError)
     }
@@ -181,6 +221,39 @@ struct ReceiptDetailView: View {
     // MARK: - Derived state
 
     private var hasUnsavedChanges: Bool { edit != committedEdit }
+
+    // MARK: - Leaving
+
+    /// Decides what leaving the screen means for the edits in hand.
+    private func attemptToLeave() {
+        guard hasUnsavedChanges else {
+            dismiss()
+            return
+        }
+        guard !autoSaveOnDismiss else {
+            Task {
+                await save()
+                if presentedError == nil { dismiss() }
+            }
+            return
+        }
+        isConfirmingExit = true
+    }
+
+    /// Runs once the save-or-discard question has been answered.
+    ///
+    /// The offer to turn auto-save on is made here rather than in Settings because this
+    /// is the moment it means something — someone has just been asked a question they
+    /// may not want asked again. It is shown once, ever: an offer that reappears every
+    /// time is a nag, and the setting is in Settings for anyone who changes their mind.
+    private func finishLeaving() {
+        guard !autoSaveOnDismiss, !hasOfferedAutoSave else {
+            dismiss()
+            return
+        }
+        hasOfferedAutoSave = true
+        isOfferingAutoSave = true
+    }
 
     // MARK: - Actions
 

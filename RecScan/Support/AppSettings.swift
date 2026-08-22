@@ -16,7 +16,15 @@ enum AppSettings {
     /// two can never drift apart.
     enum Key {
         static let defaultCurrencyCode = "settings.defaultCurrencyCode"
+        /// Save detail-view edits on leaving the screen instead of asking.
+        static let autoSaveOnDismiss = "settings.autoSaveOnDismiss"
+        /// Whether the one-time offer to turn auto-save on has been shown.
+        static let hasOfferedAutoSave = "settings.hasOfferedAutoSave"
     }
+
+    /// Off by default: silently writing an edit someone was in the middle of abandoning
+    /// is the worse failure, and the prompt is what teaches the setting exists.
+    static let autoSaveOnDismissDefault = false
 
     /// Used only when neither the user nor the locale supplies a currency, which happens
     /// for a few region-less locales.

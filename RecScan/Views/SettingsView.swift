@@ -8,6 +8,9 @@ import SwiftUI
 /// Currently the default currency; categories join it in the next change.
 struct SettingsView: View {
 
+    @AppStorage(AppSettings.Key.autoSaveOnDismiss)
+    private var autoSaveOnDismiss = AppSettings.autoSaveOnDismissDefault
+
     @AppStorage(AppSettings.Key.defaultCurrencyCode) private var defaultCurrencyCode = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -26,6 +29,14 @@ struct SettingsView: View {
                     Text("settings.section.currency")
                 } footer: {
                     Text("settings.currency.footer")
+                }
+
+                Section {
+                    Toggle("settings.autoSave.label", isOn: $autoSaveOnDismiss)
+                } header: {
+                    Text("settings.section.editing")
+                } footer: {
+                    Text("settings.autoSave.footer")
                 }
 
                 Section("settings.section.categories") {

@@ -276,6 +276,17 @@
         }
       }
     },
+    "common.back": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
     "common.cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -360,6 +371,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete Receipt"
+          }
+        }
+      }
+    },
+    "detail.autoSave.offer.decline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep asking"
+          }
+        }
+      }
+    },
+    "detail.autoSave.offer.enable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save automatically"
+          }
+        }
+      }
+    },
+    "detail.autoSave.offer.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RecScan can save your edits when you leave a receipt, without asking. You can change this any time in Settings."
+          }
+        }
+      }
+    },
+    "detail.autoSave.offer.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save changes automatically?"
           }
         }
       }
@@ -503,6 +558,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Receipt"
+          }
+        }
+      }
+    },
+    "detail.unsaved.discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        }
+      }
+    },
+    "detail.unsaved.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This receipt has changes that have not been saved."
+          }
+        }
+      }
+    },
+    "detail.unsaved.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsaved changes"
           }
         }
       }
@@ -1657,6 +1745,17 @@
         }
       }
     },
+    "review.image.accessibility.zoom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receipt image. Opens full screen."
+          }
+        }
+      }
+    },
     "review.section.receipt %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -1757,6 +1856,28 @@
         }
       }
     },
+    "settings.autoSave.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save edits when you leave a receipt instead of asking what to do with them."
+          }
+        }
+      }
+    },
+    "settings.autoSave.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save changes automatically"
+          }
+        }
+      }
+    },
     "settings.categories.manage": {
       "extractionState": "manual",
       "localizations": {
@@ -1808,6 +1929,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Currency"
+          }
+        }
+      }
+    },
+    "settings.section.editing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editing"
           }
         }
       }

@@ -50,6 +50,7 @@ enum LayoutMetrics {
     enum Review {
         /// Small enough that the fields the sheet exists to fill stay above the fold.
         static let thumbnailHeight: CGFloat = 140
+        static let zoomBadgePadding: CGFloat = 6
     }
 
     enum Form {

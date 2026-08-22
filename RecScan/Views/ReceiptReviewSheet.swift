@@ -151,22 +151,42 @@ struct ReceiptReviewSheet: View {
 ///
 /// Small on purpose: this is a form, and a full-height image would push every field the
 /// sheet exists to fill below the fold.
+/// The receipt image in the review sheet, tappable to read.
+///
+/// Filling in an amount means reading it off the receipt first, and the thumbnail is far
+/// too small for that — so it opens the same zoomable viewer the detail screen uses.
 private struct ReceiptReviewThumbnail: View {
 
     let relativePath: String
 
     @Environment(\.imageFileStore) private var imageFileStore
     @State private var image: UIImage?
+    @State private var isZooming = false
 
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: LayoutMetrics.Review.thumbnailHeight)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: LayoutMetrics.Grid.cornerRadius))
+                Button {
+                    isZooming = true
+                } label: {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: LayoutMetrics.Review.thumbnailHeight)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: LayoutMetrics.Grid.cornerRadius))
+                        .overlay(alignment: .bottomTrailing) {
+                            // Nothing else in a form is tappable-to-enlarge, so the
+                            // affordance has to be visible rather than discovered.
+                            Image(systemName: SystemImage.zoom)
+                                .font(.caption)
+                                .padding(LayoutMetrics.Review.zoomBadgePadding)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .padding(LayoutMetrics.Review.zoomBadgePadding)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("review.image.accessibility.zoom")
             } else {
                 ProgressView().frame(maxWidth: .infinity)
             }
@@ -177,6 +197,23 @@ private struct ReceiptReviewThumbnail: View {
             image = await Task.detached(priority: .userInitiated) {
                 try? store.fullResolutionImage(atRelativePath: path)
             }.value
+        }
+        .fullScreenCover(isPresented: $isZooming) {
+            NavigationStack {
+                Group {
+                    if let image {
+                        ZoomableImageView(image: image)
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("common.done") { isZooming = false }
+                    }
+                }
+            }
         }
     }
 }
