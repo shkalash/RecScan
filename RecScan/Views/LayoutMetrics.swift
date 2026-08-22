@@ -25,7 +25,7 @@ enum LayoutMetrics {
             static let verticalInset: CGFloat = 3
             /// Between the date line and the amount line.
             static let spacing: CGFloat = 1
-            static let cornerRadius: CGFloat = 6
+            static let cornerRadius: CGFloat = 12
             /// Lets a long amount shrink rather than truncate on a narrow tile.
             static let minimumScale: CGFloat = 0.7
         }
