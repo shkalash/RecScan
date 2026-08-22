@@ -178,6 +178,10 @@ decides (Hebrew or `₪` means day-first) and the device's locale is the last wo
 date is genuinely both — `05/06/2026` — **both readings are offered as chips**, likelier
 one first, rather than one being silently chosen.
 
+Those chips stop once the receipt is confirmed. An ambiguous reading is a question about
+a date, and a confirmed receipt has a date its owner accepted — worth asking once, not
+every time it is opened.
+
 However many items arrive and by whatever route, they coalesce into **one** review sheet —
 a single scrolling form with a shared date and category, rather than a modal per file.
 Dismissing it with "Later" loses nothing. The receipts are already stored, anything typed

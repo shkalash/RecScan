@@ -71,7 +71,7 @@ struct ReceiptDetailView: View {
         }
         .task { await loadImage() }
         .task { await loadAmountCandidates() }
-        .task { dateCandidates = ReceiptDateParser.candidates(in: receipt.ocrText) }
+        .task { refreshDateSuggestions(unreviewed: receipt.needsReview) }
         .fullScreenCover(isPresented: $isZooming) { ZoomCover(relativePath: receipt.relativePath) }
         .confirmationDialog(
             "detail.delete.confirm.title",
@@ -294,10 +294,23 @@ struct ReceiptDetailView: View {
         image = loaded
     }
 
+    /// Dates printed on the receipt, offered only while it still wants review.
+    ///
+    /// A confirmed receipt has a date its owner accepted, and an ambiguous reading is a
+    /// question about that — "did you mean 6 May?" is worth asking once and then never
+    /// again. Amount suggestions need no such gate: they already only appear when the
+    /// amount is empty, and an empty amount is itself what keeps a receipt unreviewed.
+    private func refreshDateSuggestions(unreviewed: Bool) {
+        dateCandidates = unreviewed ? ReceiptDateParser.candidates(in: receipt.ocrText) : []
+    }
+
     private func save() async {
         do {
             try await receiptStore.apply(edit, toReceiptWithID: receipt.id)
             committedEdit = edit
+            // Derived from the edit rather than re-read from the receipt: the store
+            // writes on its own actor, so the model here has not necessarily caught up.
+            refreshDateSuggestions(unreviewed: edit.leavesReceiptUnreviewed)
         } catch {
             presentedError = PresentableError(titleKey: "error.save.title", error: error)
         }

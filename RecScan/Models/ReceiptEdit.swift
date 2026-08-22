@@ -18,6 +18,14 @@ struct ReceiptEdit: Sendable, Equatable {
 }
 
 extension ReceiptEdit {
+
+    /// Whether saving this edit leaves the receipt still wanting review.
+    ///
+    /// The rule lives here rather than being restated at each call site: the store
+    /// applies it when writing, and the detail view needs the same answer to decide
+    /// whether to keep offering suggestions. Two copies would drift.
+    var leavesReceiptUnreviewed: Bool { amount == nil }
+
     init(_ receipt: Receipt) {
         self.init(
             capturedAt: receipt.capturedAt,

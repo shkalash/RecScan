@@ -155,7 +155,7 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         // again -- so "needs review" means exactly "not yet accounted for", and the badge
         // and its filter are all it takes to find what was missed.
         if confirming {
-            receipt.needsReview = edit.amount == nil
+            receipt.needsReview = edit.leavesReceiptUnreviewed
         }
 
         try modelContext.save()
