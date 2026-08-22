@@ -120,7 +120,7 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator. 233 tests in 29 suites.
+Swift Testing, run against the Simulator. 255 tests in 29 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
@@ -148,9 +148,13 @@ Four routes, all landing in the same review sheet:
 - **Import Files** — images and PDFs, multi-select
 - **Share to RecScan** from any other app, via the share extension
 
-A PDF becomes one receipt per page, sharing a group the way a multi-page scan does, and
-its embedded text goes straight into `ocrText` — for an e-receipt that is real text, and
-better than OCR over a picture of it.
+A document that spans pages — a multi-page PDF, a multi-page scan — becomes **one**
+receipt, its pages stacked into a single tall image. A receipt long enough to need a
+second page is still one purchase; a row per page turned one shop into several tiles, a
+review entry each, and several lines in the expense report.
+
+A PDF's embedded text goes straight into `ocrText` — for an e-receipt that is real text,
+and better than OCR over a picture of it.
 
 Capture dates come from EXIF, then the file's creation date, then today. Only the last is
 treated as a guess, and only a guess flags the receipt for review — importing photos that
@@ -201,12 +205,29 @@ them uncategorised.
 
 The library filters on date range, free text, any combination of categories, and a
 "needs review" toggle; unreviewed receipts also carry a badge on their grid tile. Settings
-holds the default currency and the category list.
+holds the default currency, the category list, and whether leaving a receipt saves the
+edits or asks.
+
+**Currency is stamped onto a receipt when it arrives**, read from the default in force at
+that moment. The setting decides what the next receipt gets and never rewrites history —
+a receipt paid in shekels stays in shekels when the default later moves to euros. Rows
+created before stamping existed are backfilled once at launch, which is what stops the
+setting from retroactively re-denominating a whole library.
 
 ## Reports
 
 A per-category expense breakdown for any date range, viewable in the app and included in
 the exported PDF (`ExportOptions.includeCategoryBreakdown`).
+
+**One section per currency, and nothing is dropped.** A report is bounded by a date range,
+not by a currency. This used to total the most frequent currency and set a flag saying
+something had been excluded — but the excluded receipts had no line and no count, so a
+period could be understated with no way to see it. Each currency now gets its own
+categories and its own total. Converting between them needs a rate and the user's say-so,
+and is a separate question from reporting what was actually spent.
+
+Receipts carrying no amount are counted on their own line rather than omitted: that line
+is how a receipt nobody filled in becomes visible.
 
 It belongs to the **export**, not the archive. An archive is a backup — a faithful copy of
 what was captured — and a derived summary in it would be a second source of truth that goes
@@ -246,7 +267,8 @@ Implemented: capture, storage, library, detail editing, categories, filtering, t
 sheet, import from Photos/Files/share sheet, OCR amount suggestions, PDF export, the
 category report, and archive import/export.
 
-Not yet built: Face ID lock.
+Not yet built: Face ID lock, and converting between currencies in a report — which needs
+a live rate from somewhere, since Foundation formats currency but does not convert it.
 
 Worth re-running the Vision language probe on each OS bump: if Hebrew recognition ever
 lands, anchoring the total to a keyword becomes possible and amount detection gets
