@@ -138,6 +138,21 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         try modelContext.save()
     }
 
+    func attachRecognizedText(_ text: String, toReceiptWithID id: UUID) async throws {
+        guard let receipt = try fetchReceipt(id: id) else {
+            throw ReceiptStoreError.receiptNotFound(id: id)
+        }
+
+        receipt.ocrText = text
+        receipt.searchIndex = ReceiptSearchIndex.make(
+            merchant: receipt.merchant, note: receipt.note, ocrText: text
+        )
+        receipt.modifiedAt = Date()
+        // `needsReview` is untouched on purpose: the receipt has been read, not confirmed.
+
+        try modelContext.save()
+    }
+
     // MARK: - Delete
 
     /// Deletes rows and files together.

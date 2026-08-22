@@ -30,6 +30,12 @@ protocol ReceiptStoring: Sendable {
     @discardableResult
     func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID]
 
+    /// Stores text recognised from a receipt's image.
+    ///
+    /// Deliberately does **not** clear `needsReview`: reading a receipt is not confirming
+    /// it, and `apply` stays the only thing that does.
+    func attachRecognizedText(_ text: String, toReceiptWithID id: UUID) async throws
+
     /// Commits edited metadata to the receipt with the given identifier.
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws
 
