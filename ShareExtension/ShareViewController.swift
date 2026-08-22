@@ -22,8 +22,10 @@ final class ShareViewController: UIViewController {
     ///
     /// Duplicated rather than shared: hoisting ten lines into a framework, or into both
     /// targets' membership, costs more than it saves — but the two must be changed together.
-    private static let appGroupIdentifier = "group.io.shkalash.recscan"
-    private static let inboxFolderName = "ShareInbox"
+    /// `nonisolated` for the same reason as `write`: both are read from the item
+    /// provider's callback queue, off the main actor.
+    nonisolated private static let appGroupIdentifier = "group.io.shkalash.recscan"
+    nonisolated private static let inboxFolderName = "ShareInbox"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -64,10 +66,13 @@ final class ShareViewController: UIViewController {
 
     /// Writes one payload into the shared inbox.
     ///
-    /// `static` because it runs on whichever queue the item provider calls back on, and
-    /// touching the view controller from there would be a race.
+    /// `nonisolated static` because it runs on whichever queue the item provider calls
+    /// back on, and touching the view controller from there would be a race. `static`
+    /// alone is not enough: this class inherits main-actor isolation from
+    /// `UIViewController`, and that reaches its static members too, so without the
+    /// explicit opt-out the call from the completion handler crosses actors.
     /// Named with a UUID so two shares in quick succession cannot collide.
-    private static func write(_ data: Data, pathExtension: String) {
+    nonisolated private static func write(_ data: Data, pathExtension: String) {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         ) else { return }
