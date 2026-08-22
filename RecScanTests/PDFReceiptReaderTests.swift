@@ -83,4 +83,85 @@ struct PDFReceiptReaderTests {
     func handlesGarbage() {
         #expect(PDFReceiptReader.items(from: Data("nope".utf8), capturedAt: certainDate).isEmpty)
     }
+
+    // MARK: - Which date wins
+
+    private var fallbackDate: Date { TestCalendar.date(year: 2026, month: 2, day: 9) }
+    private var reference: Date { TestCalendar.date(year: 2026, month: 9, day: 1) }
+
+    /// The whole point: an emailed receipt carries its date on the page, and that beats
+    /// every guess about when the file was handled.
+    @Test("A date printed on the receipt beats everything else")
+    func printedDateWins() {
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: "Invoice 21/08/2026  Total 52.30",
+            documentCreated: TestCalendar.date(year: 2026, month: 8, day: 30),
+            fallback: fallbackDate,
+            now: reference,
+            calendar: TestCalendar.utcGregorian
+        )
+
+        #expect(chosen == TestCalendar.date(year: 2026, month: 8, day: 21, hour: 12))
+    }
+
+    @Test("With no printed date, the PDF's own creation date is used")
+    func documentDateIsTheFirstFallback() {
+        let created = TestCalendar.date(year: 2026, month: 8, day: 30)
+
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: "Thank you for your custom",
+            documentCreated: created,
+            fallback: fallbackDate,
+            now: reference
+        )
+
+        #expect(chosen == created)
+    }
+
+    /// Printing an email to PDF stamps it with today, which says nothing — and would
+    /// beat a genuinely older file date if it were trusted.
+    @Test("A PDF created today is ignored in favour of the file's own date")
+    func sameDayCreationIsIgnored() {
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: "Thank you for your custom",
+            documentCreated: TestCalendar.date(year: 2026, month: 9, day: 1, hour: 9),
+            fallback: fallbackDate,
+            now: reference
+        )
+
+        #expect(chosen == fallbackDate)
+    }
+
+    @Test("A creation date in the future is ignored")
+    func futureCreationIgnored() {
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: nil,
+            documentCreated: TestCalendar.date(year: 2027, month: 1, day: 1),
+            fallback: fallbackDate,
+            now: reference
+        )
+
+        #expect(chosen == fallbackDate)
+    }
+
+    @Test("With nothing to go on, the fallback stands")
+    func fallbackStands() {
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: nil, documentCreated: nil, fallback: fallbackDate, now: reference
+        )
+
+        #expect(chosen == fallbackDate)
+    }
+
+    /// A bare time used to resolve to today via NSDataDetector, which is the exact
+    /// failure this feature exists to remove.
+    @Test("A printed time is not mistaken for a date")
+    func printedTimeIsNotADate() {
+        let chosen = PDFReceiptReader.captureDate(
+            printedIn: "Printed 14:32", documentCreated: nil, fallback: fallbackDate, now: reference
+        )
+
+        #expect(chosen == fallbackDate)
+    }
+
 }

@@ -27,6 +27,7 @@ struct ReceiptDetailView: View {
     @State private var isConfirmingDeletion = false
     @State private var presentedError: PresentableError?
     @State private var candidates: [AmountCandidate] = []
+    @State private var dateCandidates: [DateCandidate] = []
     @State private var isConfirmingExit = false
     @State private var isOfferingAutoSave = false
 
@@ -70,6 +71,7 @@ struct ReceiptDetailView: View {
         }
         .task { await loadImage() }
         .task { await loadAmountCandidates() }
+        .task { dateCandidates = ReceiptDateParser.candidates(in: receipt.ocrText) }
         .fullScreenCover(isPresented: $isZooming) { ZoomCover(relativePath: receipt.relativePath) }
         .confirmationDialog(
             "detail.delete.confirm.title",
@@ -135,6 +137,14 @@ struct ReceiptDetailView: View {
     private var detailsSection: some View {
         Section("detail.section.details") {
             DatePicker("detail.field.date", selection: $edit.capturedAt, displayedComponents: .date)
+
+            // Offered here too, not only at import: PDFs added before dates were read
+            // off them are all sitting on the day they were imported, and this is the
+            // only way to fix that batch without retyping each one.
+            DateSuggestionRow(
+                candidates: dateCandidates,
+                onSelect: { edit.capturedAt = $0 }
+            )
 
             TextField("detail.field.merchant", text: merchantBinding)
                 .textInputAutocapitalization(.words)

@@ -107,6 +107,10 @@ struct ReceiptReviewSheet: View {
                 selection: bindingForDate(at: index),
                 displayedComponents: .date
             )
+            DateSuggestionRow(
+                candidates: entry.dateCandidates,
+                onSelect: { model.chooseDate($0, at: index) }
+            )
             TextField("detail.field.merchant", text: bindingForMerchant(at: index))
                 .textInputAutocapitalization(.words)
             TextField("detail.field.amount", text: bindingForAmount(at: index))

@@ -163,9 +163,20 @@ review entry each, and several lines in the expense report.
 A PDF's embedded text goes straight into `ocrText` — for an e-receipt that is real text,
 and better than OCR over a picture of it.
 
-Capture dates come from EXIF, then the file's creation date, then today. Only the last is
-treated as a guess, and only a guess flags the receipt for review — importing photos that
-all carry EXIF leaves nothing needing attention.
+Capture dates for photos come from EXIF, then the file's creation date, then today.
+
+**A PDF's date comes off the page.** Emailed receipts carry no EXIF, and their file date
+is when they were downloaded, so they all used to land on today. The date printed on the
+receipt now wins outright; the PDF's own `CreationDate` is consulted only when the page
+prints none, and then only if it is not from today — printing an email to PDF stamps it
+with the moment you pressed print, which is the answer this exists to avoid and is
+indistinguishable from a real one.
+
+Reading a numeric date means deciding day-first or month-first, which the page rarely
+says. Anything over 12 settles itself; otherwise the document's own script or currency
+decides (Hebrew or `₪` means day-first) and the device's locale is the last word. When a
+date is genuinely both — `05/06/2026` — **both readings are offered as chips**, likelier
+one first, rather than one being silently chosen.
 
 However many items arrive and by whatever route, they coalesce into **one** review sheet —
 a single scrolling form with a shared date and category, rather than a modal per file.

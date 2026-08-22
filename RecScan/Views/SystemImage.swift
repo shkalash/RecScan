@@ -22,6 +22,7 @@ enum SystemImage {
     static let settings = "gearshape"
     static let checkmark = "checkmark"
     static let zoom = "arrow.up.left.and.arrow.down.right"
+    static let ambiguousDate = "questionmark.circle"
     static let addCategory = "plus.circle"
     static let category = "tag"
     static let chevron = "chevron.right"

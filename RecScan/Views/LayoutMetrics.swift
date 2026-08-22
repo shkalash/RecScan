@@ -45,6 +45,7 @@ enum LayoutMetrics {
         static let spacing: CGFloat = 8
         static let chipPaddingX: CGFloat = 12
         static let chipPaddingY: CGFloat = 6
+        static let chipIconSpacing: CGFloat = 4
     }
 
     enum Review {

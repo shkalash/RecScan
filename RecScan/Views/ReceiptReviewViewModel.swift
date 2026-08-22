@@ -22,6 +22,8 @@ final class ReceiptReviewViewModel {
         var amountText: String
         /// Amounts read off the image, largest first. Empty until recognition lands.
         var candidates: [AmountCandidate] = []
+        /// Dates printed on the receipt, most certain first.
+        var dateCandidates: [DateCandidate] = []
         /// Set once the field has been typed in or a chip tapped, after which an arriving
         /// suggestion must not overwrite it.
         var isAmountUserSet = false
@@ -80,6 +82,7 @@ final class ReceiptReviewViewModel {
                 ),
                 amountText: DecimalParsing.editableText(from: receipt.amount),
                 candidates: ReceiptAmountParser.candidates(in: receipt.ocrText),
+                dateCandidates: ReceiptDateParser.candidates(in: receipt.ocrText),
                 // An amount that already exists came from the file, not from a guess, and
                 // outranks anything recognition finds.
                 isAmountUserSet: receipt.amount != nil,
@@ -121,6 +124,13 @@ final class ReceiptReviewViewModel {
         entries[index].isUserEdited = true
     }
 
+    /// Chooses one of the dates printed on the receipt.
+    func chooseDate(_ date: Date, at index: Int) {
+        guard entries.indices.contains(index) else { return }
+        entries[index].edit.capturedAt = date
+        entries[index].isUserEdited = true
+    }
+
     /// Chooses one of the recognised amounts.
     func chooseAmount(_ value: Decimal, at index: Int) {
         guard entries.indices.contains(index) else { return }
@@ -142,6 +152,14 @@ final class ReceiptReviewViewModel {
     /// value the user put there.
     func applyRecognizedText(_ text: String, forReceiptWithID id: UUID) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+
+        // Dates are offered but never pre-filled. Unlike an empty amount, a date always
+        // has a value already, so replacing it would silently overwrite something the
+        // import worked out -- or something the user just picked.
+        if entries[index].dateCandidates.isEmpty {
+            entries[index].dateCandidates = ReceiptDateParser.candidates(in: text)
+        }
+
         let candidates = ReceiptAmountParser.candidates(in: text)
         guard !candidates.isEmpty else { return }
 

@@ -52,15 +52,52 @@ enum PDFReceiptReader {
 
         guard let merged = ImageStitcher.stack(images) else { return [] }
 
+        let joined = text.isEmpty ? nil : text.joined(separator: "\n")
+
         return [
             ReceiptImportItem(
                 image: merged,
-                capturedAt: capturedAt.date,
+                capturedAt: Self.captureDate(
+                    printedIn: joined,
+                    documentCreated: document.documentAttributes?[
+                        PDFDocumentAttribute.creationDateAttribute
+                    ] as? Date,
+                    fallback: capturedAt.date
+                ),
                 // Joined in page order, so an amount on the last page is still found and
                 // the search index covers the whole document.
-                ocrText: text.isEmpty ? nil : text.joined(separator: "\n")
+                ocrText: joined
             )
         ]
+    }
+
+    /// When the receipt was actually issued.
+    ///
+    /// **The date printed on the receipt always wins.** Everything below it is a guess
+    /// about when a file was handled, not about when money was spent.
+    ///
+    /// A PDF's `CreationDate` is only consulted when the page prints no date, and then
+    /// only if it is not from today: printing an email to PDF stamps it with the moment
+    /// you pressed print, which is the very answer this exists to avoid and is
+    /// indistinguishable from a real one. A same-day stamp is therefore treated as no
+    /// information at all — it says nothing the fallback does not already say, and the
+    /// fallback may hold a genuinely older file date.
+    static func captureDate(
+        printedIn text: String?,
+        documentCreated: Date?,
+        fallback: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        if let printed = ReceiptDateParser.bestGuess(in: text, now: now, calendar: calendar)?.date {
+            return printed
+        }
+        if let documentCreated,
+           documentCreated <= now,
+           !calendar.isDate(documentCreated, inSameDayAs: now) {
+            return documentCreated
+        }
+        return fallback
     }
 
     private static func render(_ page: PDFPage) -> UIImage {

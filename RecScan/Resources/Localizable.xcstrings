@@ -364,6 +364,17 @@
         }
       }
     },
+    "date.suggestions.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dates on the receipt"
+          }
+        }
+      }
+    },
     "detail.action.delete": {
       "extractionState": "manual",
       "localizations": {
