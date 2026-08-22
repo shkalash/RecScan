@@ -65,6 +65,12 @@ private actor SpyReceiptStore: ReceiptStoring {
         if case .fail(let error) = behaviour { throw error }
     }
 
+    @discardableResult
+    func stampMissingCurrency() async throws -> Int {
+        if case .fail(let error) = behaviour { throw error }
+        return 0
+    }
+
     func allReceipts() async throws -> [ReceiptSnapshot] {
         if case .fail(let error) = behaviour { throw error }
         return []

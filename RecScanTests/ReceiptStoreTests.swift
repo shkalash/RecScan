@@ -212,5 +212,90 @@ extension ImagePipelineSuite {
             let context = ModelContext(container)
             return try context.fetch(FetchDescriptor<Receipt>())
         }
+
+        // MARK: - Currency
+
+        /// A receipt is stamped with the default in force when it arrived, so changing
+        /// the setting later cannot rewrite what was already captured.
+        @Test("An imported receipt is stamped with the current default currency")
+        func stampsCurrencyAtImport() async throws {
+            let store = ReceiptStore(
+                modelContainer: container,
+                fileStore: ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache()),
+                currentDefaultCurrency: { "ILS" }
+            )
+
+            _ = try await store.importScan(pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now)
+
+            #expect(try fetchAll().first?.currencyCode == "ILS")
+        }
+
+        @Test("Changing the default currency leaves existing receipts alone")
+        func defaultChangeDoesNotRewriteHistory() async throws {
+            let fileStore = ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache())
+            let shekels = ReceiptStore(
+                modelContainer: container, fileStore: fileStore, currentDefaultCurrency: { "ILS" }
+            )
+            _ = try await shekels.importScan(pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now)
+
+            // The user switches the default, then captures another receipt.
+            let euros = ReceiptStore(
+                modelContainer: container, fileStore: fileStore, currentDefaultCurrency: { "EUR" }
+            )
+            _ = try await euros.importScan(pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now)
+
+            let codes = try fetchAll().map(\.currencyCode)
+            #expect(Set(codes) == ["ILS", "EUR"])
+        }
+
+        @Test("Receipts stored before currency was stamped get the current default")
+        func backfillsMissingCurrency() async throws {
+            let context = ModelContext(container)
+            context.insert(Receipt(id: UUID(), relativePath: "Receipts/legacy.heic"))
+            try context.save()
+
+            let store = ReceiptStore(
+                modelContainer: container,
+                fileStore: ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache()),
+                currentDefaultCurrency: { "USD" }
+            )
+            let stamped = try await store.stampMissingCurrency()
+
+            #expect(stamped == 1)
+            #expect(try fetchAll().first?.currencyCode == "USD")
+        }
+
+        @Test("A backfill does not make a receipt look edited")
+        func backfillLeavesModifiedAtAlone() async throws {
+            let modifiedAt = TestCalendar.date(year: 2026, month: 1, day: 2)
+            let context = ModelContext(container)
+            context.insert(
+                Receipt(id: UUID(), modifiedAt: modifiedAt, relativePath: "Receipts/legacy.heic")
+            )
+            try context.save()
+
+            let store = ReceiptStore(
+                modelContainer: container,
+                fileStore: ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache()),
+                currentDefaultCurrency: { "USD" }
+            )
+            _ = try await store.stampMissingCurrency()
+
+            // Bumping it would make every receipt beat its archived copy on merge.
+            #expect(try fetchAll().first?.modifiedAt == modifiedAt)
+        }
+
+        @Test("A second backfill has nothing left to do")
+        func backfillIsIdempotent() async throws {
+            let store = ReceiptStore(
+                modelContainer: container,
+                fileStore: ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache()),
+                currentDefaultCurrency: { "USD" }
+            )
+            _ = try await store.importScan(pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now)
+
+            #expect(try await store.stampMissingCurrency() == 0)
+        }
+
     }
 }

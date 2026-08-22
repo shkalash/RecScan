@@ -250,6 +250,34 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             .first { ReceiptCategory.matchingKey(for: $0.name) == key }
     }
 
+    /// Stamps a currency onto receipts that predate per-receipt currency.
+    ///
+    /// Without this the setting would still rewrite history for existing rows: a `nil`
+    /// currency falls back to the default at render time, so changing the default moves
+    /// every unstamped receipt with it — the exact behaviour that per-receipt currency
+    /// exists to stop. Run once at launch; a library with nothing to fix pays one query.
+    ///
+    /// - Returns: how many rows were stamped.
+    @discardableResult
+    func stampMissingCurrency() async throws -> Int {
+        let descriptor = FetchDescriptor<Receipt>(
+            predicate: #Predicate { $0.currencyCode == nil }
+        )
+        let unstamped = try modelContext.fetch(descriptor)
+        guard !unstamped.isEmpty else { return 0 }
+
+        let code = currentDefaultCurrency()
+        for receipt in unstamped {
+            receipt.currencyCode = code
+            // `modifiedAt` is deliberately left alone: this is a backfill, not an edit,
+            // and bumping it would make every receipt look newer than its archived copy
+            // and win merges it should lose.
+        }
+        try modelContext.save()
+        logger.info("Stamped \(unstamped.count, privacy: .public) receipt(s) with \(code, privacy: .public).")
+        return unstamped.count
+    }
+
     // MARK: - Reading
 
     func allReceipts() async throws -> [ReceiptSnapshot] {

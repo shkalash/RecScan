@@ -34,6 +34,11 @@ struct RecScanApp: App {
             LibraryView()
                 .environment(\.receiptStore, receiptStore)
                 .environment(\.imageFileStore, imageFileStore)
+                .task {
+                    // Fire and forget: a failure here leaves the old fallback behaviour
+                    // rather than blocking the library.
+                    try? await receiptStore.stampMissingCurrency()
+                }
         }
         .modelContainer(modelContainer)
     }

@@ -60,6 +60,10 @@ protocol ReceiptStoring: Sendable {
     ///
     /// Archive export needs this: a backup taken through the library's filter would look
     /// complete while holding one month.
+    /// Stamps a currency onto receipts stored before currency became per-receipt.
+    @discardableResult
+    func stampMissingCurrency() async throws -> Int
+
     func allReceipts() async throws -> [ReceiptSnapshot]
 
     /// Merges archived receipts into the library.
