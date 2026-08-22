@@ -48,7 +48,7 @@ struct LibraryView: View {
             FilterView(filter: $model.filter)
         }
         .sheet(isPresented: $model.isPresentingExport) {
-            ExportView(receipts: model.selectedReceipts)
+            ExportView(receipts: model.receiptsForExport)
         }
         .sheet(isPresented: isReviewing) {
             ReceiptReviewSheet(receipts: model.pendingReview, recognizedText: model.recognizedText)
@@ -65,20 +65,26 @@ struct LibraryView: View {
         .sheet(item: $model.importResult) { result in
             ArchiveImportSummaryView(result: result)
         }
+        // One importer for both routes: two of them on the same view silently cancel
+        // each other out. See `FileImportMode`.
         .fileImporter(
-            isPresented: $model.isPresentingArchiveImporter,
-            allowedContentTypes: [.zip]
+            isPresented: isPickingFiles,
+            allowedContentTypes: model.fileImportMode?.contentTypes ?? [],
+            allowsMultipleSelection: model.fileImportMode?.allowsMultipleSelection ?? false
         ) { outcome in
-            guard case .success(let url) = outcome else { return }
-            Task { await model.importArchive(at: url, using: receiptStore) }
-        }
-        .fileImporter(
-            isPresented: $model.isPresentingFileImporter,
-            allowedContentTypes: [.image, .pdf],
-            allowsMultipleSelection: true
-        ) { outcome in
+            let mode = model.fileImportMode
+            model.fileImportMode = nil
             guard case .success(let urls) = outcome else { return }
-            Task { await model.importFiles(at: urls, using: receiptStore) }
+
+            switch mode {
+            case .archive:
+                guard let url = urls.first else { return }
+                Task { await model.importArchive(at: url, using: receiptStore) }
+            case .receipts:
+                Task { await model.importFiles(at: urls, using: receiptStore) }
+            case nil:
+                break
+            }
         }
         .photosPicker(
             isPresented: $model.isPresentingPhotoPicker,
@@ -111,6 +117,18 @@ struct LibraryView: View {
 
     /// Driven by the queue rather than a separate flag, so the two cannot disagree about
     /// whether there is anything to review.
+    /// Drives the single file picker from the mode, so dismissing it clears the mode
+    /// and a cancelled pick cannot leave the next one showing the wrong file types.
+    private var isPickingFiles: Binding<Bool> {
+        Binding(
+            get: { model.fileImportMode != nil },
+            set: { presented in
+                guard !presented else { return }
+                model.fileImportMode = nil
+            }
+        )
+    }
+
     private var isReviewing: Binding<Bool> {
         Binding(
             get: { !model.pendingReview.isEmpty },
@@ -148,6 +166,15 @@ struct LibraryView: View {
                     model.toggleSelectAll()
                 }
             } else {
+                // Exports whatever the filter is currently showing, so narrowing the
+                // library down is itself the selection.
+                Button {
+                    model.isPresentingExport = true
+                } label: {
+                    Label("library.action.exportFiltered", systemImage: SystemImage.export)
+                }
+                .disabled(model.visibleReceipts.isEmpty)
+
                 Button {
                     model.isPresentingFilter = true
                 } label: {
@@ -171,7 +198,7 @@ struct LibraryView: View {
                         Label("library.action.importPhotos", systemImage: SystemImage.photos)
                     }
                     Button {
-                        model.isPresentingFileImporter = true
+                        model.fileImportMode = .receipts
                     } label: {
                         Label("library.action.importFiles", systemImage: SystemImage.files)
                     }
@@ -182,7 +209,7 @@ struct LibraryView: View {
                         Label("archive.action.export", systemImage: SystemImage.archiveExport)
                     }
                     Button {
-                        model.isPresentingArchiveImporter = true
+                        model.fileImportMode = .archive
                     } label: {
                         Label("archive.action.import", systemImage: SystemImage.archiveImport)
                     }

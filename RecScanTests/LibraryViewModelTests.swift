@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 import Testing
 import UIKit
 @testable import RecScan
@@ -177,6 +178,76 @@ struct LibraryViewModelTests {
         model.selection = Set(expected.map(\.id))
 
         #expect(model.selectedReceipts == expected)
+    }
+
+    // MARK: - What an export contains
+
+    /// The toolbar export is a shortcut for "everything I have filtered down to", so it
+    /// must not depend on anything having been selected.
+    @Test("Exporting without selecting takes everything the filter left showing")
+    func exportsEverythingVisible() {
+        let model = model(with: 3)
+
+        #expect(model.receiptsForExport.count == 3)
+    }
+
+    @Test("Exporting while selecting takes only the selection")
+    func exportsSelectionWhenSelecting() {
+        let model = model(with: 3)
+        model.beginSelecting()
+        model.toggleSelection(of: model.visibleReceipts[1].id)
+
+        #expect(model.receiptsForExport.map(\.id) == [model.visibleReceipts[1].id])
+    }
+
+    /// Selection mode with nothing ticked must not quietly fall back to exporting the
+    /// whole library -- the bottom-bar button is disabled there, and the scope has to
+    /// agree with it.
+    @Test("Selecting nothing exports nothing")
+    func selectingNothingExportsNothing() {
+        let model = model(with: 3)
+        model.beginSelecting()
+
+        #expect(model.receiptsForExport.isEmpty)
+    }
+
+    @Test("Leaving selection mode goes back to exporting everything visible")
+    func exportScopeRestoredAfterSelecting() {
+        let model = model(with: 3)
+        model.beginSelecting()
+        model.toggleSelection(of: model.visibleReceipts[0].id)
+        model.endSelecting()
+
+        #expect(model.receiptsForExport.count == 3)
+    }
+
+    @Test("An empty library exports nothing")
+    func emptyLibraryExportsNothing() {
+        #expect(LibraryViewModel().receiptsForExport.isEmpty)
+    }
+
+    // MARK: - File picking
+
+    /// Two `.fileImporter` modifiers on one view cancel each other out, so the two routes
+    /// share one picker and must stay mutually exclusive.
+    @Test("Picking an archive and picking receipts ask for different file types")
+    func fileImportModesDiffer() {
+        #expect(FileImportMode.archive.contentTypes == [.zip])
+        #expect(FileImportMode.receipts.contentTypes == [.image, .pdf])
+        #expect(FileImportMode.archive.allowsMultipleSelection == false)
+        #expect(FileImportMode.receipts.allowsMultipleSelection)
+    }
+
+    @Test("Choosing a route puts the picker into exactly that mode")
+    func fileImportModeIsExclusive() {
+        let model = LibraryViewModel()
+        #expect(model.fileImportMode == nil)
+
+        model.fileImportMode = .archive
+        #expect(model.fileImportMode == .archive)
+
+        model.fileImportMode = .receipts
+        #expect(model.fileImportMode == .receipts)
     }
 
     @Test("Pruning drops identifiers that no longer exist")

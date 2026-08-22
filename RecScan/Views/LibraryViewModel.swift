@@ -41,9 +41,9 @@ final class LibraryViewModel {
     var isPresentingFilter = false
     var isPresentingExport = false
     var isPresentingArchiveExport = false
-    var isPresentingArchiveImporter = false
     var isPresentingPhotoPicker = false
-    var isPresentingFileImporter = false
+    /// Non-nil while the file picker is up, and what it is picking for.
+    var fileImportMode: FileImportMode?
     var photoSelection: [PhotosPickerItem] = []
 
     /// Gathers `.onOpenURL` callbacks, which arrive one per file, into one batch.
@@ -78,6 +78,16 @@ final class LibraryViewModel {
     /// The selected receipts, in the order they appear in the library.
     var selectedReceipts: [ReceiptSnapshot] {
         visibleReceipts.filter { selection.contains($0.id) }
+    }
+
+    /// What an export should contain.
+    ///
+    /// Selecting receipts by hand and filtering the library down to them are two ways of
+    /// saying the same thing, so exporting straight from the toolbar takes everything the
+    /// filter left showing. No extra state: the export button in the bottom bar only
+    /// exists while selecting, and the toolbar one only while not.
+    var receiptsForExport: [ReceiptSnapshot] {
+        isSelecting ? selectedReceipts : visibleReceipts
     }
 
     // MARK: - Selection actions
