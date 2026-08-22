@@ -1,7 +1,8 @@
 # RecScan
 
 An iOS receipt scanner. Capture receipts with the camera, keep them in app-private
-storage, filter by date, and merge a selection into a single PDF to share.
+storage, sort them into categories, and merge a selection into a single PDF to share —
+with a per-category expense breakdown for a date range.
 
 Personal project. Native Swift and SwiftUI, one dependency.
 
@@ -13,8 +14,10 @@ a single document. RecScan keeps them in its own container and turns a date rang
 one PDF.
 
 The app never touches PhotoKit. There is no photo library usage key in `Info.plist` and
-no entitlement for one — receipts go from the camera straight into the app's own
-storage and stay there.
+no entitlement for one, even though importing from Photos is supported: `PhotosPicker`
+runs out of process and hands back only what was picked, so there is nothing to ask
+permission for. Whichever route a receipt arrives by, it lands in the app's own storage
+and stays there.
 
 ## Dependencies
 
@@ -56,13 +59,18 @@ concrete stores are injected at the app root.
 
 ```
 RecScan/
-├── Models/      Receipt (@Model), ReceiptStore (ModelActor), store protocol
+├── Models/      Receipt and ReceiptCategory (@Model), ReceiptStore (ModelActor), protocols
 ├── Storage/     HEIC encode/decode, file layout, thumbnail cache
 ├── Capture/     VNDocumentCameraViewController bridge
+├── Import/      Photos/Files/PDF readers, EXIF dates, share-extension inbox, coalescing queue
+├── OCR/         Vision text recognition, amount parsing, serial queue
 ├── Filtering/   date presets, predicate construction, month grouping
-├── Export/      PDF renderer, summary aggregation, layout metrics
+├── Export/      PDF renderer, summary aggregation, category report, layout metrics
+├── Archive/     zip export, import, manifest, merge policy
 ├── Views/       SwiftUI screens and view models
-└── Support/     constants, formatting, container factory
+└── Support/     constants, formatting, settings, container factory
+
+ShareExtension/  receives receipts from other apps' share sheets
 ```
 
 ### Decisions worth knowing
@@ -90,6 +98,15 @@ bounds AND (merchant OR note OR OCR text), each an optional string — expands i
 Collapsing the three optionals into one maintained column makes the predicate three
 flat terms.
 
+**Filters carry a "match everything" value so the predicate keeps a fixed shape.** One
+literal per combination of active filters doubles with every filter added. Sentinels avoid
+that — but only where they actually work, which had to be measured rather than assumed:
+a `distantPast ..< distantFuture` range matches everything, an "any category" flag matches
+everything, and `searchIndex.contains("")` matches **nothing**. Swift's `contains("")` is
+true, but SwiftData translates it to a store `CONTAINS`, where an empty operand matches no
+rows. So text — and only text — needs a branch, which is what keeps this at two literals
+rather than eight.
+
 **The PDF is drawn with `UIGraphicsPDFRenderer`, not PDFKit.** `PDFPage(image:)` gives
 a page and nothing else — no header line, no page numbers, no two-up layout. Each page
 renders inside its own `autoreleasepool` with its image loaded inside the loop;
@@ -103,13 +120,23 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator.
+Swift Testing, run against the Simulator. 233 tests in 29 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
 concurrent `CGImageDestinationFinalize` calls finish in about a tenth of a second each,
 while twelve deadlock permanently and hang the whole run. The app never hits this — its
 only image writer is a serial actor — but the test suite fans out unless told not to.
+
+Every view has a `#Preview`, and previews render **real content, never empty state** — a
+view that loads images or rows from a store draws placeholder boxes when the fixture is
+empty, which is the one state a layout cannot be judged from and which fails silently.
+`PreviewFixture` is the single shared source: synchronous (preview bodies are not async)
+and deterministic (no `random`, or the canvas reshuffles on every re-render). It is shared
+with the Simulator seeding path so the canvas and a running build show the same thing.
+
+Fixtures are wrapped in `#if DEBUG`, so a **Release** build is the check that matters —
+a debug-only fixture referenced from an unguarded `#Preview` breaks shipping builds.
 
 ## Getting receipts in
 
@@ -128,6 +155,62 @@ better than OCR over a picture of it.
 Capture dates come from EXIF, then the file's creation date, then today. Only the last is
 treated as a guess, and only a guess flags the receipt for review — importing photos that
 all carry EXIF leaves nothing needing attention.
+
+However many items arrive and by whatever route, they coalesce into **one** review sheet —
+a single scrolling form with a shared date and category, rather than a modal per file.
+Dismissing it loses nothing: the receipts are already stored, and their review flag stays
+set so the library keeps showing which ones still want attention.
+
+## Reading the amount
+
+Scanned images go through Vision and the numbers are parsed out: the largest becomes the
+amount, the rest are offered as one-tap chips.
+
+Nothing about this is language-aware, which is what makes it work. Vision **does not
+support Hebrew** at any revision — Hebrew words come back as Latin nonsense (`n7H`,
+`naaa`). The digits, though, are read perfectly at full confidence, because digits are
+digits in every script. So recognition runs `en-US` with language correction off, and only
+the numbers are used.
+
+The decimal separator is decided by **shape, not locale**: the last separator followed by
+exactly two digits is the decimal point. `1.234,56` and `1,234.56` both give 1234.56. A
+receipt does not say which convention it used, and `Locale.current` would get a German
+receipt wrong on an English phone.
+
+**Why the alternatives are shown rather than just the best guess.** "Largest wins" is right
+on an ordinary receipt and wrong when a bigger number appears — a pre-discount subtotal,
+cash tendered. Recognition can also corrupt a value outright: `₪52.30` has been observed
+reading as `152.30`, which is entirely plausible on its own and undetectable in code.
+Seeing `52.30` in the chips beside it is the only thing that makes either case fixable.
+
+**Suggestions live in the form, never the database.** They commit on save like any other
+field, so no unconfirmed number can reach a total, an export or the report. A guess never
+overwrites an amount already on the receipt, never overwrites what has been typed, and
+never re-fills a field that was deliberately cleared.
+
+Recognition is queued serially and runs behind the review sheet, which fills in as each
+result lands. It outlives the sheet, so dismissing a large batch with "Later" still leaves
+every receipt searchable. PDF imports skip it entirely — their embedded text is real text
+and strictly better.
+
+## Organising and finding
+
+Categories are user-defined and created inline from the picker, so filing a receipt does
+not mean a detour into Settings first. Deleting a category keeps its receipts and leaves
+them uncategorised.
+
+The library filters on date range, free text, any combination of categories, and a
+"needs review" toggle; unreviewed receipts also carry a badge on their grid tile. Settings
+holds the default currency and the category list.
+
+## Reports
+
+A per-category expense breakdown for any date range, viewable in the app and included in
+the exported PDF (`ExportOptions.includeCategoryBreakdown`).
+
+It belongs to the **export**, not the archive. An archive is a backup — a faithful copy of
+what was captured — and a derived summary in it would be a second source of truth that goes
+stale the moment a receipt is edited.
 
 ## Backup and restore
 
@@ -159,12 +242,15 @@ same archive twice is a no-op the second time.
 
 ## Status
 
-Capture, storage, library, detail editing, filtering, PDF export and archive
-import/export are implemented.
+Implemented: capture, storage, library, detail editing, categories, filtering, the review
+sheet, import from Photos/Files/share sheet, OCR amount suggestions, PDF export, the
+category report, and archive import/export.
 
-Not yet built: OCR autofill for scanned images, Face ID lock, and per-category reports.
-`Receipt.ocrText` is already populated for PDFs and wired into search and the PDF's
-invisible searchable-text layer.
+Not yet built: Face ID lock.
+
+Worth re-running the Vision language probe on each OS bump: if Hebrew recognition ever
+lands, anchoring the total to a keyword becomes possible and amount detection gets
+meaningfully better.
 
 ### Share extension
 
