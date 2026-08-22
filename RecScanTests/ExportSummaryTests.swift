@@ -46,7 +46,7 @@ struct ExportSummaryTests {
         #expect(summary.receiptCount == 2)
     }
 
-    @Test("Totals are broken down by month and add up to the grand total")
+    @Test("Totals are broken down by month within a currency")
     func totalsByMonth() {
         let summary = ExportSummary(
             receipts: [
@@ -58,27 +58,35 @@ struct ExportSummaryTests {
             defaultCurrencyCode: defaultCurrency
         )
 
-        #expect(summary.monthTotals.count == 2)
-        #expect(summary.monthTotals.map(\.total) == [Decimal(string: "100.00"), Decimal(string: "15.00")])
-        #expect(summary.grandTotal == Decimal(string: "115.00"))
+        let section = try! #require(summary.sections.first)
+        #expect(summary.sections.count == 1)
+        #expect(section.monthTotals.count == 2)
+        #expect(section.monthTotals.map(\.total) == [Decimal(string: "100.00"), Decimal(string: "15.00")])
+        #expect(section.total == Decimal(string: "115.00"))
     }
 
     @Test("Month sections run newest first, matching the library")
-    func monthsAreDescending() {
+    func monthsAreDescending() throws {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 2, amount: 1), snapshot(day: 1, month: 5, amount: 1)],
             calendar: calendar,
             defaultCurrencyCode: defaultCurrency
         )
 
-        #expect(summary.monthTotals.map(\.id) == [
+        let section = try #require(summary.sections.first)
+        #expect(section.monthTotals.map(\.id) == [
             TestCalendar.date(year: 2026, month: 5, day: 1, hour: 0),
             TestCalendar.date(year: 2026, month: 2, day: 1, hour: 0)
         ])
     }
 
-    @Test("Totals use the most common currency and flag what was left out")
-    func excludesMinorityCurrencies() {
+    // MARK: - Currency
+
+    /// The summary used to keep only the most frequent currency and set a flag saying
+    /// something had been dropped. The dropped receipts were invisible -- no row, no
+    /// count -- so an export could understate a period with no way to tell.
+    @Test("Every currency gets its own section; none is dropped")
+    func everyCurrencyIsReported() throws {
         let summary = ExportSummary(
             receipts: [
                 snapshot(day: 1, month: 3, amount: 10, currency: "USD"),
@@ -89,23 +97,51 @@ struct ExportSummaryTests {
             defaultCurrencyCode: defaultCurrency
         )
 
-        #expect(summary.currencyCode == "USD")
-        #expect(summary.grandTotal == 30)
-        #expect(summary.hasExcludedCurrencies)
+        #expect(summary.sections.map(\.currencyCode) == ["JPY", "USD"])
+        #expect(summary.sections.map(\.total) == [999, 30])
+        // Every receipt is accounted for somewhere.
+        #expect(summary.sections.reduce(0) { $0 + $1.receiptCount } == 3)
     }
 
-    @Test("A single currency is never reported as mixed")
-    func singleCurrencyIsNotFlagged() {
+    @Test("Sections run biggest spend first, with a stable tie-break")
+    func sectionsAreOrdered() {
+        let summary = ExportSummary(
+            receipts: [
+                snapshot(day: 1, month: 3, amount: 5, currency: "AAA"),
+                snapshot(day: 2, month: 3, amount: 5, currency: "BBB"),
+                snapshot(day: 3, month: 3, amount: 50, currency: "CCC")
+            ],
+            calendar: calendar,
+            defaultCurrencyCode: defaultCurrency
+        )
+
+        #expect(summary.sections.map(\.currencyCode) == ["CCC", "AAA", "BBB"])
+    }
+
+    @Test("One currency produces exactly one section")
+    func singleCurrency() {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 3, amount: 10), snapshot(day: 2, month: 3, amount: 5)],
             calendar: calendar,
             defaultCurrencyCode: defaultCurrency
         )
 
-        #expect(!summary.hasExcludedCurrencies)
+        #expect(summary.sections.count == 1)
+        #expect(summary.sections.first?.currencyCode == "USD")
     }
 
-    @Test("Receipts with no amounts produce a zero total and no currency")
+    @Test("A receipt stored before currency was stamped falls back to the default")
+    func unstampedFallsBackToDefault() {
+        let summary = ExportSummary(
+            receipts: [snapshot(day: 1, month: 3, amount: 10, currency: nil)],
+            calendar: calendar,
+            defaultCurrencyCode: defaultCurrency
+        )
+
+        #expect(summary.sections.map(\.currencyCode) == ["USD"])
+    }
+
+    @Test("Receipts with no amounts produce no sections but are still counted")
     func noAmountsAtAll() {
         let summary = ExportSummary(
             receipts: [snapshot(day: 1, month: 3, amount: nil), snapshot(day: 2, month: 3, amount: nil)],
@@ -114,8 +150,7 @@ struct ExportSummaryTests {
         )
 
         #expect(summary.receiptCount == 2)
-        #expect(summary.grandTotal == .zero)
-        #expect(summary.currencyCode == nil)
-        #expect(summary.monthTotals.isEmpty)
+        #expect(summary.sections.isEmpty)
+        #expect(summary.missingAmountCount == 2)
     }
 }

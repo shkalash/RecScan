@@ -46,19 +46,23 @@ extension ImagePipelineSuite {
             )
         }
 
-        /// `ExportSummary` derives its rows from receipts; this rebuilds one carrying a
+        /// `ExportSummary` derives its rows from receipts; this builds one carrying a
         /// chosen set of month totals so pagination can be tested without writing
         /// hundreds of image files.
         private func summaryWith(
-            _ summary: ExportSummary,
-            monthTotals: [ExportSummary.MonthTotal]
+            monthTotals: [ExportSummary.MonthTotal],
+            currencyCode: String = "USD"
         ) -> ExportSummary {
             ExportSummary(
                 receiptCount: monthTotals.reduce(0) { $0 + $1.count },
-                monthTotals: monthTotals,
-                grandTotal: monthTotals.reduce(Decimal.zero) { $0 + $1.total },
-                currencyCode: "USD",
-                hasExcludedCurrencies: false
+                sections: [
+                    ExportSummary.Section(
+                        id: currencyCode,
+                        monthTotals: monthTotals,
+                        receiptCount: monthTotals.reduce(0) { $0 + $1.count },
+                        total: monthTotals.reduce(Decimal.zero) { $0 + $1.total }
+                    )
+                ]
             )
         }
 
@@ -220,13 +224,39 @@ extension ImagePipelineSuite {
                     total: 10
                 )
             }
-            let summary = ExportSummary(receipts: [], calendar: TestCalendar.utcGregorian)
+            let pages = PDFBuilder.summaryPages(for: summaryWith(monthTotals: totals))
 
-            let pages = PDFBuilder.summaryPages(for: summaryWith(summary, monthTotals: totals))
-
-            #expect(pages.count == 3)
-            #expect(pages.flatMap(\.self).count == months)
+            // The currency header and its total are rows too, so the flattened table is
+            // two longer than the month count.
+            #expect(pages.flatMap(\.self).count == months + 2)
             #expect(pages.allSatisfy { $0.count <= rowsPerPage })
+            #expect(pages.count == Int(ceil(Double(months + 2) / Double(rowsPerPage))))
+        }
+
+        /// Each currency adds a header and a total, and the table flows across the break
+        /// rather than starting a fresh page per currency.
+        @Test("Several currencies paginate as one continuous table")
+        func multipleCurrenciesPaginate() {
+            let summary = ExportSummary(
+                receiptCount: 3,
+                sections: ["USD", "EUR", "JPY"].map { code in
+                    ExportSummary.Section(
+                        id: code,
+                        monthTotals: [
+                            ExportSummary.MonthTotal(
+                                id: TestCalendar.date(year: 2026, month: 1, day: 1), count: 1, total: 10
+                            )
+                        ],
+                        receiptCount: 1,
+                        total: 10
+                    )
+                }
+            )
+
+            let pages = PDFBuilder.summaryPages(for: summary)
+
+            // Three currencies x (header + one month + total).
+            #expect(pages.flatMap(\.self).count == 9)
         }
 
         @Test("A selection with no amounts still produces one summary page")

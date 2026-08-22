@@ -98,20 +98,20 @@ struct PDFBuilder: Sendable {
             }
 
             if let summary {
-                for (index, months) in summaryPages.enumerated() {
+                for (index, rows) in summaryPages.enumerated() {
                     autoreleasepool {
                         context.beginPage()
-                        drawSummary(summary, months: months, isFinalPage: index == summaryPages.count - 1)
+                        drawSummary(summary, rows: rows, isFinalPage: index == summaryPages.count - 1)
                         drawFooter(pageNumber: pages.count + index + 1, of: totalPageCount)
                     }
                 }
             }
 
             if let report {
-                for (index, lines) in reportPages.enumerated() {
+                for (index, rows) in reportPages.enumerated() {
                     autoreleasepool {
                         context.beginPage()
-                        drawReport(report, lines: lines, isFinalPage: index == reportPages.count - 1)
+                        drawReport(report, rows: rows, isFinalPage: index == reportPages.count - 1)
                         drawFooter(
                             pageNumber: pages.count + summaryPages.count + index + 1,
                             of: totalPageCount
@@ -301,13 +301,17 @@ struct PDFBuilder: Sendable {
     ///
     /// - Returns: one entry per summary page. Always at least one, so a selection with
     ///   no amounts at all still gets its count page.
-    static func summaryPages(for summary: ExportSummary) -> [[ExportSummary.MonthTotal]] {
-        guard !summary.monthTotals.isEmpty else { return [[]] }
-        return summary.monthTotals.chunked(into: monthRowsPerSummaryPage)
+    static func summaryPages(for summary: ExportSummary) -> [[TotalsTableRow<ExportSummary.Section>]] {
+        let rows = TotalsTableRow.rows(for: summary.sections)
+        guard !rows.isEmpty else { return [[]] }
+        return rows.chunked(into: monthRowsPerSummaryPage)
     }
 
-    /// How many month rows fit on one summary page once the fixed furniture — title,
-    /// column header, both rules, the grand total and the currency note — is reserved.
+    /// How many table rows fit on one page once the fixed furniture — title, column
+    /// header, both rules and the missing-amount note — is reserved.
+    ///
+    /// Currency headers and per-currency totals are ordinary rows in this budget, so a
+    /// report with several currencies simply uses more pages.
     static var monthRowsPerSummaryPage: Int {
         let ruleHeight = PDFMetrics.Summary.rulerThickness + PDFMetrics.Summary.sectionSpacing
         let reserved =
@@ -315,9 +319,8 @@ struct PDFBuilder: Sendable {
             + PDFMetrics.Summary.titleBottomSpacing
             + PDFMetrics.Summary.rowHeight          // column header
             + ruleHeight * 2                        // above and below the rows
-            + PDFMetrics.Summary.rowHeight          // grand total
             + PDFMetrics.Summary.sectionSpacing
-            + PDFMetrics.Summary.rowHeight          // mixed-currency note
+            + PDFMetrics.Summary.rowHeight          // missing-amount note
 
         let available = contentRect.height - reserved
         return max(1, Int(available / PDFMetrics.Summary.rowHeight))
@@ -339,103 +342,34 @@ struct PDFBuilder: Sendable {
     }
 
     /// Splits category lines across pages, reusing the summary's row budget.
-    static func reportPages(for report: CategoryReport) -> [[CategoryReport.Line]] {
-        guard !report.lines.isEmpty else { return [[]] }
-        return report.lines.chunked(into: monthRowsPerSummaryPage)
+    static func reportPages(for report: CategoryReport) -> [[TotalsTableRow<CategoryReport.Section>]] {
+        let rows = TotalsTableRow.rows(for: report.sections)
+        guard !rows.isEmpty else { return [[]] }
+        return rows.chunked(into: monthRowsPerSummaryPage)
     }
 
     private func drawReport(
         _ report: CategoryReport,
-        lines: [CategoryReport.Line],
+        rows: [TotalsTableRow<CategoryReport.Section>],
         isFinalPage: Bool
     ) {
         let content = Self.contentRect
         var cursorY = content.minY
 
-        Self.drawText(
-            String(localized: "pdf.report.title"),
-            in: CGRect(
-                x: content.minX,
-                y: cursorY,
-                width: content.width,
-                height: PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
-            ),
-            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTitle, weight: .semibold),
-            alignment: .left,
-            color: PDFMetrics.Ink.primary
-        )
-        cursorY += PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
-
-        Self.drawText(
-            String(localized: "pdf.report.period \(Self.periodDescription(report.interval))"),
-            in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
-            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody),
-            alignment: .left,
-            color: PDFMetrics.Ink.secondary
-        )
-        cursorY += PDFMetrics.Summary.rowHeight + PDFMetrics.Summary.sectionSpacing
-
-        cursorY = drawSummaryRow(
-            month: String(localized: "report.section.breakdown"),
-            count: String(localized: "pdf.summary.column.count"),
-            total: String(localized: "pdf.summary.column.total"),
+        cursorY = drawTableHeading(
+            title: String(localized: "pdf.report.title"),
+            subtitle: String(localized: "pdf.report.period \(Self.periodDescription(report.interval))"),
+            firstColumn: String(localized: "report.section.breakdown"),
             atY: cursorY,
-            in: content,
-            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody, weight: .semibold)
+            in: content
         )
-        cursorY = drawRule(atY: cursorY, in: content)
 
-        for line in lines {
-            cursorY = drawSummaryRow(
-                month: line.name,
-                count: line.count.formatted(),
-                total: ReceiptFormatting.amount(
-                    line.total, currencyCode: report.currencyCode, defaultCode: defaultCurrencyCode
-                ) ?? "",
-                atY: cursorY,
-                in: content,
-                font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody)
-            )
+        for row in rows {
+            cursorY = drawTableRow(row, label: \.name, atY: cursorY, in: content)
         }
 
         guard isFinalPage else { return }
-
-        cursorY = drawRule(atY: cursorY, in: content)
-        cursorY = drawSummaryRow(
-            month: String(localized: "report.total"),
-            count: report.receiptCount.formatted(),
-            total: ReceiptFormatting.amount(
-                report.grandTotal, currencyCode: report.currencyCode, defaultCode: defaultCurrencyCode
-            ) ?? "",
-            atY: cursorY,
-            in: content,
-            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
-        )
-
-        // Mirrors the in-app report: a receipt with no amount is reported, not dropped,
-        // so the exported copy cannot look complete when it is not.
-        if report.missingAmountCount > 0 {
-            cursorY += PDFMetrics.Summary.sectionSpacing
-            Self.drawText(
-                String(localized: "pdf.report.missingAmount \(report.missingAmountCount)"),
-                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
-                font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
-                alignment: .left,
-                color: PDFMetrics.Ink.secondary
-            )
-            cursorY += PDFMetrics.Summary.rowHeight
-        }
-
-        if report.hasExcludedCurrencies {
-            cursorY += PDFMetrics.Summary.sectionSpacing
-            Self.drawText(
-                String(localized: "pdf.summary.mixedCurrencies"),
-                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
-                font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
-                alignment: .left,
-                color: PDFMetrics.Ink.secondary
-            )
-        }
+        drawMissingAmountNote(count: report.missingAmountCount, atY: cursorY, in: content)
     }
 
     private static func periodDescription(_ interval: DateInterval?) -> String {
@@ -449,14 +383,45 @@ struct PDFBuilder: Sendable {
 
     private func drawSummary(
         _ summary: ExportSummary,
-        months: [ExportSummary.MonthTotal],
+        rows: [TotalsTableRow<ExportSummary.Section>],
         isFinalPage: Bool
     ) {
         let content = Self.contentRect
         var cursorY = content.minY
 
+        cursorY = drawTableHeading(
+            title: String(localized: "pdf.summary.title"),
+            subtitle: nil,
+            firstColumn: String(localized: "pdf.summary.column.month"),
+            atY: cursorY,
+            in: content
+        )
+
+        for row in rows {
+            cursorY = drawTableRow(
+                row,
+                label: { ReceiptFormatting.monthTitle(for: $0.id) },
+                atY: cursorY,
+                in: content
+            )
+        }
+
+        guard isFinalPage else { return }
+        drawMissingAmountNote(count: summary.missingAmountCount, atY: cursorY, in: content)
+    }
+
+    /// Title, optional subtitle and column headings, shared by both tables.
+    private func drawTableHeading(
+        title: String,
+        subtitle: String?,
+        firstColumn: String,
+        atY y: CGFloat,
+        in content: CGRect
+    ) -> CGFloat {
+        var cursorY = y
+
         Self.drawText(
-            String(localized: "pdf.summary.title"),
+            title,
             in: CGRect(
                 x: content.minX,
                 y: cursorY,
@@ -468,51 +433,94 @@ struct PDFBuilder: Sendable {
             color: PDFMetrics.Ink.primary
         )
         cursorY += PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
-            + PDFMetrics.Summary.titleBottomSpacing
+
+        if let subtitle {
+            Self.drawText(
+                subtitle,
+                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
+                font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody),
+                alignment: .left,
+                color: PDFMetrics.Ink.secondary
+            )
+            cursorY += PDFMetrics.Summary.rowHeight
+        }
+        cursorY += PDFMetrics.Summary.titleBottomSpacing
 
         cursorY = drawSummaryRow(
-            month: String(localized: "pdf.summary.column.month"),
+            month: firstColumn,
             count: String(localized: "pdf.summary.column.count"),
             total: String(localized: "pdf.summary.column.total"),
             atY: cursorY,
             in: content,
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody, weight: .semibold)
         )
-        cursorY = drawRule(atY: cursorY, in: content)
+        return drawRule(atY: cursorY, in: content)
+    }
 
-        for monthTotal in months {
-            cursorY = drawSummaryRow(
-                month: ReceiptFormatting.monthTitle(for: monthTotal.id),
-                count: monthTotal.count.formatted(),
-                total: ReceiptFormatting.amount(monthTotal.total, currencyCode: summary.currencyCode, defaultCode: defaultCurrencyCode) ?? "",
-                atY: cursorY,
+    /// Draws one flattened table row, whichever kind it is.
+    ///
+    /// Generic over the section so the summary and the report share it: the only thing
+    /// that differs between them is how a row is labelled.
+    private func drawTableRow<Section: CurrencySection>(
+        _ row: TotalsTableRow<Section>,
+        label: (Section.Row) -> String,
+        atY y: CGFloat,
+        in content: CGRect
+    ) -> CGFloat {
+        switch row {
+        case .currencyHeader(let section):
+            // A little air above each currency so the sections read apart.
+            let cursorY = y + PDFMetrics.Summary.sectionSpacing
+            Self.drawText(
+                CurrencyCatalog.name(for: section.currencyCode),
+                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
+                font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody, weight: .semibold),
+                alignment: .left,
+                color: PDFMetrics.Ink.primary
+            )
+            return cursorY + PDFMetrics.Summary.rowHeight
+
+        case .row(let item, let currencyCode):
+            return drawSummaryRow(
+                month: label(item),
+                count: item.count.formatted(),
+                total: ReceiptFormatting.amount(
+                    item.total, currencyCode: currencyCode, defaultCode: defaultCurrencyCode
+                ) ?? "",
+                atY: y,
                 in: content,
                 font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody)
             )
-        }
 
-        guard isFinalPage else { return }
-
-        cursorY = drawRule(atY: cursorY, in: content)
-        cursorY = drawSummaryRow(
-            month: String(localized: "pdf.summary.total"),
-            count: summary.receiptCount.formatted(),
-            total: ReceiptFormatting.amount(summary.grandTotal, currencyCode: summary.currencyCode, defaultCode: defaultCurrencyCode) ?? "",
-            atY: cursorY,
-            in: content,
-            font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
-        )
-
-        if summary.hasExcludedCurrencies {
-            cursorY += PDFMetrics.Summary.sectionSpacing
-            Self.drawText(
-                String(localized: "pdf.summary.mixedCurrencies"),
-                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
-                font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
-                alignment: .left,
-                color: PDFMetrics.Ink.secondary
+        case .total(let section):
+            let ruled = drawRule(atY: y, in: content)
+            return drawSummaryRow(
+                month: String(localized: "pdf.summary.total"),
+                count: section.receiptCount.formatted(),
+                total: ReceiptFormatting.amount(
+                    section.total, currencyCode: section.currencyCode, defaultCode: defaultCurrencyCode
+                ) ?? "",
+                atY: ruled,
+                in: content,
+                font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
             )
         }
+    }
+
+    private func drawMissingAmountNote(count: Int, atY y: CGFloat, in content: CGRect) {
+        guard count > 0 else { return }
+        Self.drawText(
+            String(localized: "pdf.report.missingAmount \(count)"),
+            in: CGRect(
+                x: content.minX,
+                y: y + PDFMetrics.Summary.sectionSpacing,
+                width: content.width,
+                height: PDFMetrics.Summary.rowHeight
+            ),
+            font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
+            alignment: .left,
+            color: PDFMetrics.Ink.secondary
+        )
     }
 
     /// Draws one summary table row and returns the Y coordinate below it.

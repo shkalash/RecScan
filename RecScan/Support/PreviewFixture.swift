@@ -108,7 +108,8 @@ enum PreviewFixture {
         amount: Decimal? = Decimal(string: "42.50"),
         note: String? = nil,
         categoryID: UUID? = nil,
-        needsReview: Bool = false
+        needsReview: Bool = false,
+        currencyCode: String = defaultPreviewCurrency
     ) -> Receipt {
         let id = UUID()
         let relativePath = (try? imageFileStore.write(SampleReceiptImage.make(index: index), for: id))
@@ -122,13 +123,19 @@ enum PreviewFixture {
             relativePath: relativePath,
             merchant: merchant,
             amount: amount,
-            currencyCode: "ILS",
+            currencyCode: currencyCode,
             note: note,
             categoryID: categoryID,
             needsReview: needsReview,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: nil)
         )
     }
+
+    /// The currency most preview receipts are in.
+    static let defaultPreviewCurrency = "ILS"
+    /// A second currency, so the report preview shows its per-currency split rather than
+    /// the one-section case that hides the layout entirely.
+    static let secondaryPreviewCurrency = "EUR"
 
     /// A spread of receipts across several months, so month sectioning is visible.
     static func makeReceipts(count: Int = receiptCount) -> [Receipt] {
@@ -140,7 +147,10 @@ enum PreviewFixture {
                 daysAgo: index * 9,
                 categoryID: index == 2 ? nil : categoryIDs[index % categoryIDs.count],
                 // A couple flagged, so the badge and the filter both have something to show.
-                needsReview: index % 3 == 1
+                needsReview: index % 3 == 1,
+                // Every fourth receipt in a second currency, so the report preview shows
+                // more than one section and the split is actually reviewable.
+                currencyCode: index % 4 == 3 ? secondaryPreviewCurrency : defaultPreviewCurrency
             )
         }
     }

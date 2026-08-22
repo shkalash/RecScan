@@ -1568,17 +1568,6 @@
         }
       }
     },
-    "pdf.summary.mixedCurrencies": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Receipts in other currencies are not included in these totals."
-          }
-        }
-      }
-    },
     "pdf.summary.title": {
       "extractionState": "manual",
       "localizations": {
@@ -1677,17 +1666,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "report.mixedCurrencies": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Receipts in other currencies are not included in these totals."
           }
         }
       }

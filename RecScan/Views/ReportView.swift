@@ -28,8 +28,10 @@ struct ReportView: View {
                             }
                         }
                     } else {
-                        breakdownSection(report)
-                        totalSection(report)
+                        ForEach(report.sections) { section in
+                            currencySection(section)
+                        }
+                        missingAmountSection(report)
                     }
                 } else if model.isLoading {
                     Section { ProgressView().frame(maxWidth: .infinity) }
@@ -75,11 +77,16 @@ struct ReportView: View {
         }
     }
 
-    private func breakdownSection(_ report: CategoryReport) -> some View {
-        Section("report.section.breakdown") {
-            ForEach(report.lines) { line in
+    /// One currency's categories and its total.
+    ///
+    /// Currencies are never summed together, so each gets its own section and its own
+    /// total line. A period containing shekels and euros shows both, rather than showing
+    /// the shekels and quietly dropping the euros.
+    private func currencySection(_ section: CategoryReport.Section) -> some View {
+        Section {
+            ForEach(section.lines) { line in
                 LabeledContent {
-                    Text(amount(line.total, in: report))
+                    Text(amount(line.total, in: section))
                         .monospacedDigit()
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
@@ -91,22 +98,27 @@ struct ReportView: View {
                     }
                 }
             }
-        }
-    }
 
-    private func totalSection(_ report: CategoryReport) -> some View {
-        Section {
             LabeledContent {
-                Text(amount(report.grandTotal, in: report))
+                Text(amount(section.total, in: section))
                     .monospacedDigit()
                     .fontWeight(.semibold)
             } label: {
                 Text("report.total").fontWeight(.semibold)
             }
-            // A receipt with no amount contributes nothing to the total, so without
-            // this line it would simply be missing -- and a missed entry is exactly
-            // what someone reads a report to notice.
-            if report.missingAmountCount > 0 {
+        } header: {
+            Text(CurrencyCatalog.name(for: section.currencyCode))
+        }
+    }
+
+    /// Receipts in the period that carry no amount at all.
+    ///
+    /// Outside the currency sections because a receipt with no amount has no currency
+    /// worth trusting either -- it simply has not been filled in.
+    @ViewBuilder
+    private func missingAmountSection(_ report: CategoryReport) -> some View {
+        if report.missingAmountCount > 0 {
+            Section {
                 LabeledContent {
                     Text("report.missingAmount.count \(report.missingAmountCount)")
                         .monospacedDigit()
@@ -116,17 +128,13 @@ struct ReportView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-        } footer: {
-            if report.hasExcludedCurrencies {
-                Text("report.mixedCurrencies")
-            }
         }
     }
 
-    private func amount(_ value: Decimal, in report: CategoryReport) -> String {
+    private func amount(_ value: Decimal, in section: CategoryReport.Section) -> String {
         ReceiptFormatting.amount(
             value,
-            currencyCode: report.currencyCode,
+            currencyCode: section.currencyCode,
             defaultCode: AppSettings.defaultCurrencyCode()
         ) ?? ""
     }
