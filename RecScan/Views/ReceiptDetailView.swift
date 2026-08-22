@@ -73,11 +73,8 @@ struct ReceiptDetailView: View {
         .task { await loadAmountCandidates() }
         .task { refreshDateSuggestions(unreviewed: receipt.needsReview) }
         .fullScreenCover(isPresented: $isZooming) { ZoomCover(relativePath: receipt.relativePath) }
-        .confirmationDialog(
-            "detail.delete.confirm.title",
-            isPresented: $isConfirmingDeletion,
-            titleVisibility: .visible
-        ) {
+        // See `LibraryView`: deletion asks in an alert, not a confirmation dialog.
+        .alert("detail.delete.confirm.title", isPresented: $isConfirmingDeletion) {
             Button("detail.delete.confirm.action", role: .destructive) {
                 Task { await delete() }
             }

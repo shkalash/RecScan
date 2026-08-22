@@ -100,11 +100,11 @@ struct LibraryView: View {
             // must become one review sheet, not five that overwrite each other.
             model.acceptHandoff(of: url, using: receiptStore)
         }
-        .confirmationDialog(
-            "library.delete.confirm.title",
-            isPresented: $model.isConfirmingDeletion,
-            titleVisibility: .visible
-        ) {
+        // An alert rather than a confirmation dialog: this is a yes/no question about
+        // something irreversible, and an alert states it in the middle of the screen
+        // instead of sliding up a sheet of options where the destructive one is the
+        // easiest to hit by reflex.
+        .alert("library.delete.confirm.title", isPresented: $model.isConfirmingDeletion) {
             Button("library.delete.confirm.action", role: .destructive) {
                 Task { await model.deleteSelectedReceipts(using: receiptStore) }
             }

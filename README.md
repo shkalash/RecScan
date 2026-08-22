@@ -232,6 +232,12 @@ Categories are user-defined and created inline from the picker, so filing a rece
 not mean a detour into Settings first. Deleting a category keeps its receipts and leaves
 them uncategorised.
 
+Every grid tile carries a small pill with its date and amount. The library is already
+sectioned by month, so the tile shows day and month only, and a month's spending can be
+read off the grid without opening anything. A receipt with no amount shows a dash rather
+than losing the pill: a missing amount is the thing worth spotting, and an absent pill
+looks the same as a tile you have not read yet.
+
 The library filters on date range, free text, any combination of categories, and a
 "needs review" toggle; unreviewed receipts also carry a badge on their grid tile. Settings
 holds the default currency, the category list, and whether leaving a receipt saves the

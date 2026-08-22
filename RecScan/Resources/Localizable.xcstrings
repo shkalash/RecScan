@@ -1411,6 +1411,17 @@
         }
       }
     },
+    "library.item.accessibility.noAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No amount recorded"
+          }
+        }
+      }
+    },
     "library.selection.count %lld": {
       "extractionState": "manual",
       "localizations": {

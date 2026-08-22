@@ -24,6 +24,15 @@ enum ReceiptFormatting {
         date.formatted(Date.FormatStyle(locale: locale).year().month().day())
     }
 
+    /// Day and month only, e.g. "12 Mar".
+    ///
+    /// For the grid tile, where the library is already sectioned by month and repeating
+    /// the year on every thumbnail would spend the little room there is on the one part
+    /// the reader already knows.
+    static func tileDate(for date: Date, locale: Locale = .current) -> String {
+        date.formatted(Date.FormatStyle(locale: locale).month(.abbreviated).day())
+    }
+
     /// An amount rendered in its own currency, or `nil` when there is no amount.
     ///
     /// - Parameter defaultCode: currency to use when the receipt carries none. Passed in

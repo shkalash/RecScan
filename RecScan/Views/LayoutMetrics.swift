@@ -17,6 +17,16 @@ enum LayoutMetrics {
         static let cornerRadius: CGFloat = 10
         static let selectionBorderWidth: CGFloat = 3
         static let selectionBadgePadding: CGFloat = 6
+
+        /// The date-and-amount pill along the bottom of a tile.
+        enum Pill {
+            static let padding: CGFloat = 4
+            static let horizontalInset: CGFloat = 6
+            static let verticalInset: CGFloat = 3
+            static let spacing: CGFloat = 4
+            /// Lets a long amount shrink rather than truncate on a narrow tile.
+            static let minimumScale: CGFloat = 0.7
+        }
     }
 
     enum Detail {

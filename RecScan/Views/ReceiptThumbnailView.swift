@@ -58,12 +58,59 @@ struct ReceiptThumbnailView: View {
                     .padding(LayoutMetrics.Grid.selectionBadgePadding)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
+
+            detailPill
+                .frame(width: side, height: side, alignment: .bottom)
+                .allowsHitTesting(false)
         }
         .task(id: receipt.id) { await loadThumbnail() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+        // The amount rides as the element's value rather than being folded into the
+        // label: the label already varies by merchant and review state, and adding
+        // another axis would double a string table for no gain in what is spoken.
+        .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
+
+    /// Date and amount along the bottom of the tile.
+    ///
+    /// The library is already sectioned by month, so a day-and-month date plus the amount
+    /// turns the grid into something you can read a month's spending off without opening
+    /// anything.
+    ///
+    /// A receipt with no amount shows a dash rather than dropping the pill: a missing
+    /// amount is the thing worth spotting, and an absent pill looks the same as a tile
+    /// you have not looked at yet.
+    private var detailPill: some View {
+        HStack(spacing: LayoutMetrics.Grid.Pill.spacing) {
+            Text(ReceiptFormatting.tileDate(for: receipt.capturedAt))
+                .foregroundStyle(.secondary)
+
+            if let amount = ReceiptFormatting.amount(
+                receipt.amount,
+                currencyCode: receipt.currencyCode,
+                defaultCode: AppSettings.defaultCurrencyCode()
+            ) {
+                Text(amount)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(LayoutMetrics.Grid.Pill.minimumScale)
+            } else {
+                Text(verbatim: Self.missingAmountMark)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption2)
+        .padding(.horizontal, LayoutMetrics.Grid.Pill.horizontalInset)
+        .padding(.vertical, LayoutMetrics.Grid.Pill.verticalInset)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(LayoutMetrics.Grid.Pill.padding)
+    }
+
+    /// An en dash, not a localised string: it is a typographic mark for "nothing here",
+    /// and it reads the same in every language.
+    private static let missingAmountMark = "–"
 
     @ViewBuilder
     private var thumbnailContent: some View {
@@ -93,6 +140,17 @@ struct ReceiptThumbnailView: View {
             return Text("library.item.accessibility.dateOnly \(date)")
         }
         return Text("library.item.accessibility.merchant \(merchant) \(date)")
+    }
+
+    private var accessibilityValue: Text {
+        guard let amount = ReceiptFormatting.amount(
+            receipt.amount,
+            currencyCode: receipt.currencyCode,
+            defaultCode: AppSettings.defaultCurrencyCode()
+        ) else {
+            return Text("library.item.accessibility.noAmount")
+        }
+        return Text(amount)
     }
 
     private func loadThumbnail() async {
@@ -128,6 +186,30 @@ struct ReceiptThumbnailView: View {
         isSelectionActive: false,
         isSelected: false,
         side: 96
+    )
+    .previewLibrary()
+    .padding()
+}
+
+#Preview("Tile — no amount") {
+    // The state the pill exists to make visible: an em dash where a figure should be.
+    ReceiptThumbnailView(
+        receipt: PreviewFixture.makeReceipt(index: 3, amount: nil, needsReview: true),
+        isSelectionActive: false,
+        isSelected: false,
+        side: 96
+    )
+    .previewLibrary()
+    .padding()
+}
+
+#Preview("Tile — smallest size") {
+    // The narrowest tile the adaptive grid will produce, where the pill has least room.
+    ReceiptThumbnailView(
+        receipt: PreviewFixture.makeReceipt(index: 5, amount: Decimal(string: "1234.56")),
+        isSelectionActive: false,
+        isSelected: false,
+        side: LayoutMetrics.Grid.minimumItemWidth
     )
     .previewLibrary()
     .padding()
