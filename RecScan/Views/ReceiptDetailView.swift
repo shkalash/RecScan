@@ -26,6 +26,7 @@ struct ReceiptDetailView: View {
     @State private var isZooming = false
     @State private var isConfirmingDeletion = false
     @State private var presentedError: PresentableError?
+    @State private var candidates: [AmountCandidate] = []
 
     init(receipt: Receipt) {
         self.receipt = receipt
@@ -51,6 +52,7 @@ struct ReceiptDetailView: View {
             }
         }
         .task { await loadImage() }
+        .task { await loadAmountCandidates() }
         .fullScreenCover(isPresented: $isZooming) { zoomCover }
         .confirmationDialog(
             "detail.delete.confirm.title",
@@ -106,6 +108,15 @@ struct ReceiptDetailView: View {
                 .onChange(of: amountText) { _, text in
                     edit.amount = DecimalParsing.decimal(from: text)
                 }
+
+            AmountSuggestionRow(
+                candidates: candidates,
+                currencyCode: edit.currencyCode,
+                onSelect: { value in
+                    amountText = DecimalParsing.editableText(from: value)
+                    edit.amount = value
+                }
+            )
 
             NavigationLink {
                 CurrencyPickerView(selection: currencyBinding)
@@ -181,6 +192,38 @@ struct ReceiptDetailView: View {
     }
 
     // MARK: - Actions
+
+    /// Offers recognised amounts for a receipt whose amount is still blank.
+    ///
+    /// Unlike the review sheet, nothing is pre-filled here: this receipt has been seen
+    /// before and left empty, so a number appearing on its own would look like a saved
+    /// value rather than a guess. Every amount is a chip, and the field stays untouched
+    /// until one is tapped.
+    ///
+    /// Recognition is only run when the receipt has never been through it -- normally the
+    /// text is already there from import. This is deliberately not on the library's serial
+    /// queue: one on-demand request should not wait behind a fifty-photo backlog, and two
+    /// concurrent Vision requests is nowhere near the contention the queue guards against.
+    private func loadAmountCandidates() async {
+        guard edit.amount == nil else { return }
+
+        if let existing = receipt.ocrText, !existing.isEmpty {
+            candidates = ReceiptAmountParser.candidates(in: existing)
+            return
+        }
+
+        let relativePath = receipt.relativePath
+        let fileStore = imageFileStore
+        let recognized = await Task.detached(priority: .userInitiated) { () -> String? in
+            guard let image = try? fileStore.fullResolutionImage(atRelativePath: relativePath)
+            else { return nil }
+            return try? ReceiptTextRecognizer().recognizeText(in: image)
+        }.value
+
+        guard !Task.isCancelled, let recognized, !recognized.isEmpty else { return }
+        try? await receiptStore.attachRecognizedText(recognized, toReceiptWithID: receipt.id)
+        candidates = ReceiptAmountParser.candidates(in: recognized)
+    }
 
     private func loadImage() async {
         let relativePath = receipt.relativePath

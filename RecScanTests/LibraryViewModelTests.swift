@@ -17,6 +17,7 @@ private actor SpyReceiptStore: ReceiptStoring {
     private let behaviour: Behaviour
     private(set) var importedPageCounts: [Int] = []
     private(set) var deletedIDs: [[UUID]] = []
+    private(set) var attachedText: [UUID: String] = [:]
 
     init(behaviour: Behaviour = .succeed) {
         self.behaviour = behaviour
@@ -37,6 +38,11 @@ private actor SpyReceiptStore: ReceiptStoring {
     }
 
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {
+        if case .fail(let error) = behaviour { throw error }
+    }
+
+    func attachRecognizedText(_ text: String, toReceiptWithID id: UUID) async throws {
+        attachedText[id] = text
         if case .fail(let error) = behaviour { throw error }
     }
 

@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "amount.suggestions.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found on the receipt"
+          }
+        }
+      }
+    },
     "archive.action.create": {
       "extractionState": "manual",
       "localizations": {

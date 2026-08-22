@@ -48,6 +48,16 @@ final class LibraryViewModel {
 
     /// Gathers `.onOpenURL` callbacks, which arrive one per file, into one batch.
     private let handoffQueue = ImportQueue()
+
+    /// Recognition runs one receipt at a time in the background; a fifty-photo import must
+    /// not start fifty at once.
+    private let recognitionQueue = TextRecognitionQueue()
+
+    /// Text read off each receipt, keyed by receipt id.
+    ///
+    /// Published rather than only persisted so the review sheet can show suggestions the
+    /// moment each one lands, instead of opening empty and staying that way.
+    private(set) var recognizedText: [UUID: String] = [:]
     var isPresentingSettings = false
     var isPresentingReport = false
     var importResult: ArchiveImportResult?
@@ -119,6 +129,7 @@ final class LibraryViewModel {
             let all = try await store.allReceipts()
             let ids = Set(created)
             pendingReview = all.filter { ids.contains($0.id) }
+            await recognizeText(for: pendingReview, using: store, fileStore: ImageFileStore())
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
         }
@@ -134,6 +145,48 @@ final class LibraryViewModel {
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.deleteFailed, error: error)
         }
+    }
+
+    // MARK: - Text recognition
+
+    /// Queues text recognition for newly added receipts.
+    ///
+    /// Fire and forget: the results land in `ocrText` and are parsed for amounts when a
+    /// receipt is opened, so nothing here has to finish before the review sheet appears.
+    func recognizeText(
+        for receipts: [ReceiptSnapshot],
+        using store: any ReceiptStoring,
+        fileStore: any ImageFileStoring
+    ) async {
+        for receipt in receipts {
+            // PDF imports already carry real extracted text -- far better than anything
+            // recognition could produce -- so they are published straight through.
+            if let existing = receipt.ocrText, !existing.isEmpty {
+                recognizedText[receipt.id] = existing
+                continue
+            }
+
+            let id = receipt.id
+            let path = receipt.relativePath
+
+            // Not awaited: enqueue returns as soon as the work is chained, so the review
+            // sheet opens immediately and fills in behind it. The work outlives this
+            // sheet, which is what keeps a dismissed batch from losing its search text.
+            await recognitionQueue.enqueue { [weak self] in
+                guard let image = try? fileStore.fullResolutionImage(atRelativePath: path),
+                      let text = try? ReceiptTextRecognizer().recognizeText(in: image),
+                      !text.isEmpty
+                else { return }
+
+                try? await store.attachRecognizedText(text, toReceiptWithID: id)
+                await MainActor.run { self?.recognizedText[id] = text }
+            }
+        }
+    }
+
+    /// Waits for queued recognition to finish. Tests only -- the app never blocks on this.
+    func drainRecognition() async {
+        await recognitionQueue.drain()
     }
 
     // MARK: - Importing files and photos
@@ -190,6 +243,7 @@ final class LibraryViewModel {
             let all = try await store.allReceipts()
             let ids = Set(created)
             pendingReview = all.filter { ids.contains($0.id) }
+            await recognizeText(for: pendingReview, using: store, fileStore: ImageFileStore())
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
         }
@@ -221,6 +275,7 @@ final class LibraryViewModel {
             let ids = Set(created)
             pendingReview = all.filter { ids.contains($0.id) }
             SharedInbox.remove(pending)
+            await recognizeText(for: pendingReview, using: store, fileStore: ImageFileStore())
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.importFailed, error: error)
         }

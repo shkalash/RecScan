@@ -41,6 +41,12 @@ enum LayoutMetrics {
         static let maximumHeight: CGFloat = 480
     }
 
+    enum Suggestions {
+        static let spacing: CGFloat = 8
+        static let chipPaddingX: CGFloat = 12
+        static let chipPaddingY: CGFloat = 6
+    }
+
     enum Review {
         /// Small enough that the fields the sheet exists to fill stay above the fold.
         static let thumbnailHeight: CGFloat = 140

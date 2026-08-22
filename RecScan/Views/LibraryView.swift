@@ -51,7 +51,7 @@ struct LibraryView: View {
             ExportView(receipts: model.selectedReceipts)
         }
         .sheet(isPresented: isReviewing) {
-            ReceiptReviewSheet(receipts: model.pendingReview)
+            ReceiptReviewSheet(receipts: model.pendingReview, recognizedText: model.recognizedText)
         }
         .sheet(isPresented: $model.isPresentingReport) {
             ReportView()

@@ -117,4 +117,131 @@ struct ReceiptReviewViewModelTests {
         #expect(model.isBatch)
         #expect(model.entries.count == 3)
     }
+
+    // MARK: - Recognised amounts
+
+    /// The verbatim output of recognising a real Hebrew receipt, garbage included.
+    private static let recognizedReceipt =
+        "n7H 790 | 12.90 | 7.50 | 24.30 | a70 | naaa | 7.60 | N52.30 | 17%nAN"
+
+    @Test("The largest recognised amount is pre-filled")
+    func largestIsPreFilled() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        #expect(model.entries[0].edit.amount == Decimal(string: "52.30"))
+        #expect(model.entries[0].amountText == "52.3")
+    }
+
+    @Test("Every recognised amount is offered, largest first")
+    func allAmountsOffered() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        let values = model.entries[0].candidates.map(\.value)
+        #expect(values == ["52.30", "24.30", "12.90", "7.60", "7.50"].map { Decimal(string: $0) })
+    }
+
+    @Test("An amount already on the receipt is never overwritten by a guess")
+    func existingAmountWins() {
+        let receipt = snapshot(amount: Decimal(string: "9.99"))
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        #expect(model.entries[0].edit.amount == Decimal(string: "9.99"))
+        // The suggestions still appear -- the guess is refused, not hidden.
+        #expect(!model.entries[0].candidates.isEmpty)
+    }
+
+    /// Recognition finishes while the sheet is open, so this races real typing.
+    @Test("A typed amount is never overwritten by a guess that lands later")
+    func typedAmountWins() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.updateAmountText("40", at: 0)
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        #expect(model.entries[0].edit.amount == Decimal(40))
+        #expect(model.entries[0].amountText == "40")
+    }
+
+    @Test("Clearing the field and re-recognising still does not re-fill it")
+    func clearedFieldStaysCleared() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.updateAmountText("", at: 0)
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        #expect(model.entries[0].edit.amount == nil)
+        #expect(model.entries[0].amountText.isEmpty)
+    }
+
+    @Test("Tapping a suggestion fills the field")
+    func choosingASuggestion() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipt.id)
+
+        model.chooseAmount(Decimal(string: "24.30")!, at: 0)
+
+        #expect(model.entries[0].edit.amount == Decimal(string: "24.30"))
+        #expect(model.entries[0].amountText == "24.3")
+    }
+
+    @Test("Text with no amounts in it changes nothing")
+    func nothingFound() {
+        let receipt = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        model.applyRecognizedText("n7H naaa a70", forReceiptWithID: receipt.id)
+
+        #expect(model.entries[0].edit.amount == nil)
+        #expect(model.entries[0].amountText.isEmpty)
+        #expect(model.entries[0].candidates.isEmpty)
+    }
+
+    @Test("Recognised text lands on its own receipt only")
+    func routedByIdentifier() {
+        let first = snapshot()
+        let second = snapshot()
+        let model = ReceiptReviewViewModel(receipts: [first, second])
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: second.id)
+
+        #expect(model.entries[0].edit.amount == nil)
+        #expect(model.entries[1].edit.amount == Decimal(string: "52.30"))
+    }
+
+    @Test("A receipt imported with text already attached is suggested immediately")
+    func textFromImportIsParsedUpFront() {
+        var receipt = snapshot()
+        receipt = ReceiptSnapshot(
+            id: receipt.id,
+            capturedAt: receipt.capturedAt,
+            createdAt: receipt.createdAt,
+            modifiedAt: receipt.modifiedAt,
+            relativePath: receipt.relativePath,
+            merchant: nil,
+            amount: nil,
+            currencyCode: nil,
+            note: nil,
+            ocrText: Self.recognizedReceipt,
+            groupID: nil,
+            pageIndex: 0,
+            categoryID: nil,
+            needsReview: true
+        )
+
+        let model = ReceiptReviewViewModel(receipts: [receipt])
+
+        #expect(model.entries[0].candidates.count == 5)
+    }
 }
+

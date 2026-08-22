@@ -20,6 +20,11 @@ final class ReceiptReviewViewModel {
         let relativePath: String
         var edit: ReceiptEdit
         var amountText: String
+        /// Amounts read off the image, largest first. Empty until recognition lands.
+        var candidates: [AmountCandidate] = []
+        /// Set once the field has been typed in or a chip tapped, after which an arriving
+        /// suggestion must not overwrite it.
+        var isAmountUserSet = false
     }
 
     private(set) var entries: [Entry]
@@ -45,7 +50,11 @@ final class ReceiptReviewViewModel {
                     note: receipt.note,
                     categoryID: receipt.categoryID
                 ),
-                amountText: DecimalParsing.editableText(from: receipt.amount)
+                amountText: DecimalParsing.editableText(from: receipt.amount),
+                candidates: ReceiptAmountParser.candidates(in: receipt.ocrText),
+                // An amount that already exists came from the file, not from a guess, and
+                // outranks anything recognition finds.
+                isAmountUserSet: receipt.amount != nil
             )
         }
         sharedDate = receipts.first?.capturedAt ?? Date()
@@ -76,6 +85,38 @@ final class ReceiptReviewViewModel {
         guard entries.indices.contains(index) else { return }
         entries[index].amountText = text
         entries[index].edit.amount = DecimalParsing.decimal(from: text)
+        entries[index].isAmountUserSet = true
+    }
+
+    /// Chooses one of the recognised amounts.
+    func chooseAmount(_ value: Decimal, at index: Int) {
+        guard entries.indices.contains(index) else { return }
+        entries[index].amountText = DecimalParsing.editableText(from: value)
+        entries[index].edit.amount = value
+        entries[index].isAmountUserSet = true
+    }
+
+    // MARK: - Recognised amounts
+
+    /// Takes recognised text for one receipt and pre-fills the largest amount found.
+    ///
+    /// Only the form is touched. Nothing reaches the database until save, so a wrong guess
+    /// can never end up in a total, an export or the expense report.
+    ///
+    /// Recognition finishes one receipt at a time and arrives while the sheet is already
+    /// open and possibly already being typed into, so a suggestion never overwrites a
+    /// value the user put there.
+    func applyRecognizedText(_ text: String, forReceiptWithID id: UUID) {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        let candidates = ReceiptAmountParser.candidates(in: text)
+        guard !candidates.isEmpty else { return }
+
+        entries[index].candidates = candidates
+        guard !entries[index].isAmountUserSet, entries[index].amountText.isEmpty else { return }
+
+        let best = candidates[0].value
+        entries[index].amountText = DecimalParsing.editableText(from: best)
+        entries[index].edit.amount = best
     }
 
     // MARK: - Apply to all

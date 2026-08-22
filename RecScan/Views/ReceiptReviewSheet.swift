@@ -17,14 +17,17 @@ import UIKit
 struct ReceiptReviewSheet: View {
 
     let receipts: [ReceiptSnapshot]
+    /// Text recognised so far, keyed by receipt id. Grows while the sheet is open.
+    let recognizedText: [UUID: String]
 
     @State private var model: ReceiptReviewViewModel
     @Environment(\.receiptStore) private var receiptStore
     @Environment(\.imageFileStore) private var imageFileStore
     @Environment(\.dismiss) private var dismiss
 
-    init(receipts: [ReceiptSnapshot]) {
+    init(receipts: [ReceiptSnapshot], recognizedText: [UUID: String] = [:]) {
         self.receipts = receipts
+        self.recognizedText = recognizedText
         _model = State(initialValue: ReceiptReviewViewModel(receipts: receipts))
     }
 
@@ -49,6 +52,13 @@ struct ReceiptReviewSheet: View {
                 }
             }
             .errorAlert($model.presentedError)
+            // Recognition runs one receipt at a time behind this sheet, so suggestions
+            // arrive in instalments rather than all at once.
+            .onChange(of: recognizedText, initial: true) { _, texts in
+                for (id, text) in texts {
+                    model.applyRecognizedText(text, forReceiptWithID: id)
+                }
+            }
         }
     }
 
@@ -89,6 +99,11 @@ struct ReceiptReviewSheet: View {
                 .textInputAutocapitalization(.words)
             TextField("detail.field.amount", text: bindingForAmount(at: index))
                 .keyboardType(.decimalPad)
+            AmountSuggestionRow(
+                candidates: entry.candidates,
+                currencyCode: entry.edit.currencyCode,
+                onSelect: { model.chooseAmount($0, at: index) }
+            )
             CategoryPicker(selection: bindingForCategory(at: index))
         } header: {
             Text(model.isBatch ? "review.section.receipt \(index + 1)" : "detail.section.details")
