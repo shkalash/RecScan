@@ -277,4 +277,140 @@ struct ReceiptReviewViewModelTests {
         #expect(ReceiptReviewViewModel(receipts: [snapshot()]).zoomedImage == nil)
     }
 
+
+    // MARK: - Parking edits with "Later"
+
+    /// "Later" used to write nothing, so working through a batch and then dismissing it
+    /// lost the lot. The work is kept; the question stays open.
+    @Test("Later keeps what was typed")
+    func parkKeepsEdits() async throws {
+        let receipts = [snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.setMerchant("Corner Store", at: 0)
+
+        await model.park(using: store)
+
+        let edit = try #require(await store.edit(for: receipts[0].id))
+        #expect(edit.merchant == "Corner Store")
+    }
+
+    @Test("Later does not confirm the receipt")
+    func parkLeavesTheFlagStanding() async throws {
+        let receipts = [snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.setMerchant("Corner Store", at: 0)
+
+        await model.park(using: store)
+
+        #expect(await store.applied.first?.confirming == false)
+    }
+
+    @Test("An entry nobody touched is not written at all")
+    func parkSkipsUntouchedEntries() async throws {
+        let receipts = [snapshot(), snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.setMerchant("Corner Store", at: 1)
+
+        await model.park(using: store)
+
+        #expect(await store.appliedIDs == [receipts[1].id])
+    }
+
+    @Test("Dismissing without touching anything writes nothing")
+    func parkWithNoEditsIsANoOp() async throws {
+        let model = ReceiptReviewViewModel(receipts: [snapshot()])
+        let store = RecordingReceiptStore()
+
+        await model.park(using: store)
+
+        #expect(await store.applied.isEmpty)
+    }
+
+    /// The important half. Recognition pre-fills an amount nobody has looked at; parking
+    /// must not turn that guess into a stored value, or it reaches totals and reports and
+    /// stops looking like a suggestion.
+    @Test("An untouched OCR guess is not written, even when the entry is dirty")
+    func parkDropsUntouchedGuess() async throws {
+        let receipts = [snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipts[0].id)
+        // Dirty for an unrelated reason, so the entry is written at all.
+        model.setMerchant("Corner Store", at: 0)
+        #expect(model.entries[0].edit.amount == Decimal(string: "52.30"))
+
+        await model.park(using: store)
+
+        let edit = try #require(await store.edit(for: receipts[0].id))
+        #expect(edit.merchant == "Corner Store")
+        #expect(edit.amount == nil)
+    }
+
+    @Test("An amount the user chose from the chips is written")
+    func parkKeepsChosenAmount() async throws {
+        let receipts = [snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+
+        model.applyRecognizedText(Self.recognizedReceipt, forReceiptWithID: receipts[0].id)
+        model.chooseAmount(Decimal(string: "24.30")!, at: 0)
+
+        await model.park(using: store)
+
+        #expect(await store.edit(for: receipts[0].id)?.amount == Decimal(string: "24.30"))
+    }
+
+    @Test("A typed amount is written")
+    func parkKeepsTypedAmount() async throws {
+        let receipts = [snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.updateAmountText("18.40", at: 0)
+
+        await model.park(using: store)
+
+        #expect(await store.edit(for: receipts[0].id)?.amount == Decimal(string: "18.40"))
+    }
+
+    /// An amount already on the receipt is not a guess, so parking keeps it.
+    @Test("An amount that arrived with the receipt survives parking")
+    func parkKeepsPreexistingAmount() async throws {
+        let receipts = [snapshot(amount: Decimal(string: "9.99"))]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.setMerchant("Corner Store", at: 0)
+
+        await model.park(using: store)
+
+        #expect(await store.edit(for: receipts[0].id)?.amount == Decimal(string: "9.99"))
+    }
+
+    @Test("Apply-to-all counts as the user editing every entry")
+    func applyToAllMarksEveryEntry() async throws {
+        let receipts = [snapshot(), snapshot()]
+        let model = ReceiptReviewViewModel(receipts: receipts)
+        let store = RecordingReceiptStore()
+        model.sharedCategoryID = UUID()
+        model.applySharedCategory()
+
+        await model.park(using: store)
+
+        #expect(await store.appliedIDs.count == 2)
+    }
+
+    /// Dropping the guess is only acceptable because it comes back. `ocrText` is stored
+    /// by the recognition queue independently of the review sheet, so reopening the
+    /// receipt still offers the same chips.
+    @Test("The suggestions are still there after the guess is dropped")
+    func suggestionsSurviveParking() {
+        let candidates = ReceiptAmountParser.candidates(in: Self.recognizedReceipt)
+
+        #expect(candidates.map(\.value.description).first == "52.3")
+        #expect(candidates.count == 5)
+    }
+
 }

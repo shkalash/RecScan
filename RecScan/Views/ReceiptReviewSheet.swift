@@ -44,7 +44,13 @@ struct ReceiptReviewSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("review.action.later") { dismiss() }
+                    // Dismiss first, then write: the sheet should not hang on a disk
+                    // round trip, and the receipts keep their review flag either way.
+                    Button("review.action.later") {
+                        let store = receiptStore
+                        dismiss()
+                        Task { await model.park(using: store) }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("common.save") { Task { await save() } }

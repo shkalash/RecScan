@@ -37,7 +37,9 @@ protocol ReceiptStoring: Sendable {
     func attachRecognizedText(_ text: String, toReceiptWithID id: UUID) async throws
 
     /// Commits edited metadata to the receipt with the given identifier.
-    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws
+    /// - Parameter confirming: whether the save also clears the review flag. Pass `false`
+    ///   to keep edits without marking the receipt as done with.
+    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID, confirming: Bool) async throws
 
     /// Deletes rows *and* their backing image files.
     func delete(receiptsWithIDs ids: [UUID]) async throws
@@ -78,4 +80,16 @@ protocol ReceiptStoring: Sendable {
 
     /// Every category, for export.
     func allCategories() async throws -> [ArchiveManifest.Category]
+}
+
+extension ReceiptStoring {
+
+    /// Commits edits and confirms the receipt, which is what editing normally means.
+    ///
+    /// A convenience rather than a defaulted parameter on the requirement: defaults on a
+    /// protocol requirement do not reach calls made through `any ReceiptStoring`, which
+    /// is how every view holds the store.
+    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {
+        try await apply(edit, toReceiptWithID: id, confirming: true)
+    }
 }

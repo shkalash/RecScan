@@ -120,7 +120,7 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator. 255 tests in 29 suites.
+Swift Testing, run against the Simulator. 268 tests in 29 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
@@ -162,8 +162,15 @@ all carry EXIF leaves nothing needing attention.
 
 However many items arrive and by whatever route, they coalesce into **one** review sheet —
 a single scrolling form with a shared date and category, rather than a modal per file.
-Dismissing it loses nothing: the receipts are already stored, and their review flag stays
-set so the library keeps showing which ones still want attention.
+Dismissing it with "Later" loses nothing. The receipts are already stored, anything typed
+into the sheet is kept, and their review flag stays set so the library keeps showing which
+ones still want attention — "later" means the work survives and the question is still open.
+
+Only entries the user actually touched are written, and an amount that was merely
+suggested is put back to what it was. Parking a batch keeps the user's work; a guess
+nobody looked at is not their work, and storing it would let an unconfirmed number reach a
+total while looking saved rather than suggested. The suggestion is not lost — `ocrText` is
+stored separately, so reopening the receipt offers the same chips.
 
 ## Reading the amount
 

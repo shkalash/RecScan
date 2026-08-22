@@ -38,7 +38,7 @@ private actor SpyReceiptStore: ReceiptStoring {
         return items.map { _ in UUID() }
     }
 
-    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {
+    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID, confirming: Bool) async throws {
         if case .fail(let error) = behaviour { throw error }
     }
 

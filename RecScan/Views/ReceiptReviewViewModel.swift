@@ -25,6 +25,27 @@ final class ReceiptReviewViewModel {
         /// Set once the field has been typed in or a chip tapped, after which an arriving
         /// suggestion must not overwrite it.
         var isAmountUserSet = false
+        /// Whether the user has changed anything on this entry.
+        ///
+        /// Distinct from "the edit differs from the receipt": recognition pre-fills an
+        /// amount without anyone touching it, and that must not count as work worth
+        /// keeping. Only the user's own actions set this.
+        var isUserEdited = false
+        /// The amount the receipt arrived with, so a pre-fill can be undone when parking.
+        let originalAmount: Decimal?
+
+        /// The edit as it should be stored when leaving without confirming.
+        ///
+        /// An amount that was only ever suggested is put back to what it was: parking a
+        /// batch keeps the user's work, and a guess nobody looked at is not their work.
+        /// Writing it would let an unconfirmed number reach a total, an export or the
+        /// expense report -- and, worse, make it look saved rather than suggested.
+        var parkedEdit: ReceiptEdit {
+            guard !isAmountUserSet else { return edit }
+            var parked = edit
+            parked.amount = originalAmount
+            return parked
+        }
     }
 
     private(set) var entries: [Entry]
@@ -61,7 +82,8 @@ final class ReceiptReviewViewModel {
                 candidates: ReceiptAmountParser.candidates(in: receipt.ocrText),
                 // An amount that already exists came from the file, not from a guess, and
                 // outranks anything recognition finds.
-                isAmountUserSet: receipt.amount != nil
+                isAmountUserSet: receipt.amount != nil,
+                originalAmount: receipt.amount
             )
         }
         sharedDate = receipts.first?.capturedAt ?? Date()
@@ -75,16 +97,19 @@ final class ReceiptReviewViewModel {
     func setDate(_ date: Date, at index: Int) {
         guard entries.indices.contains(index) else { return }
         entries[index].edit.capturedAt = date
+        entries[index].isUserEdited = true
     }
 
     func setMerchant(_ merchant: String, at index: Int) {
         guard entries.indices.contains(index) else { return }
         entries[index].edit.merchant = merchant
+        entries[index].isUserEdited = true
     }
 
     func setCategory(_ categoryID: UUID?, at index: Int) {
         guard entries.indices.contains(index) else { return }
         entries[index].edit.categoryID = categoryID
+        entries[index].isUserEdited = true
     }
 
     /// Keeps the parsed amount in step with what has been typed.
@@ -93,6 +118,7 @@ final class ReceiptReviewViewModel {
         entries[index].amountText = text
         entries[index].edit.amount = DecimalParsing.decimal(from: text)
         entries[index].isAmountUserSet = true
+        entries[index].isUserEdited = true
     }
 
     /// Chooses one of the recognised amounts.
@@ -101,6 +127,7 @@ final class ReceiptReviewViewModel {
         entries[index].amountText = DecimalParsing.editableText(from: value)
         entries[index].edit.amount = value
         entries[index].isAmountUserSet = true
+        entries[index].isUserEdited = true
     }
 
     // MARK: - Recognised amounts
@@ -129,11 +156,17 @@ final class ReceiptReviewViewModel {
     // MARK: - Apply to all
 
     func applySharedDate() {
-        for index in entries.indices { entries[index].edit.capturedAt = sharedDate }
+        for index in entries.indices {
+            entries[index].edit.capturedAt = sharedDate
+            entries[index].isUserEdited = true
+        }
     }
 
     func applySharedCategory() {
-        for index in entries.indices { entries[index].edit.categoryID = sharedCategoryID }
+        for index in entries.indices {
+            entries[index].edit.categoryID = sharedCategoryID
+            entries[index].isUserEdited = true
+        }
     }
 
     // MARK: - Saving
@@ -157,6 +190,34 @@ final class ReceiptReviewViewModel {
         } catch {
             presentedError = PresentableError(titleKey: ErrorTitle.saveFailed, error: error)
             return false
+        }
+    }
+
+    /// Keeps what the user typed without confirming any of it.
+    ///
+    /// Dismissing with "Later" used to write nothing, so a batch someone had worked
+    /// through was lost the moment the sheet closed. Their edits are now stored and the
+    /// receipts stay flagged, which is exactly what "later" means: the work is kept, the
+    /// question is still open.
+    ///
+    /// Only entries the user actually touched are written. An untouched entry has nothing
+    /// worth saving, and writing it would clear nothing but cost a `modifiedAt` bump --
+    /// which would make it beat its own archived copy on the next merge.
+    ///
+    /// Errors are swallowed. This runs as the sheet is going away, so there is no longer
+    /// a screen to show an alert on, and the receipts keep their flag either way.
+    func park(using store: any ReceiptStoring) async {
+        let parked = entries.filter(\.isUserEdited)
+        guard !parked.isEmpty else { return }
+
+        for entry in parked {
+            do {
+                try await store.apply(entry.parkedEdit, toReceiptWithID: entry.id, confirming: false)
+            } catch {
+                LogCategory.persistence.logger.error(
+                    "Could not keep edits for \(entry.id, privacy: .public): \(error)"
+                )
+            }
         }
     }
 

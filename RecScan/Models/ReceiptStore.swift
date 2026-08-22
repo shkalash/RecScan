@@ -121,7 +121,13 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
 
     // MARK: - Edit
 
-    func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID) async throws {
+    /// - Parameter confirming: whether saving also counts as confirming the receipt.
+    ///   `false` keeps the review flag set, for edits parked rather than finished.
+    func apply(
+        _ edit: ReceiptEdit,
+        toReceiptWithID id: UUID,
+        confirming: Bool = true
+    ) async throws {
         guard let receipt = try fetchReceipt(id: id) else {
             throw ReceiptStoreError.receiptNotFound(id: id)
         }
@@ -142,7 +148,10 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         receipt.modifiedAt = Date()
         // Editing a receipt is the act of confirming it, so the prompt clears here as
         // well as from the review sheet -- otherwise a badge could only be cleared one way.
-        receipt.needsReview = false
+        // Parking edits with "Later" is the exception: the work is kept, the prompt stands.
+        if confirming {
+            receipt.needsReview = false
+        }
 
         try modelContext.save()
     }
