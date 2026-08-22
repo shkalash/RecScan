@@ -1390,6 +1390,29 @@
         }
       }
     },
+    "pdf.report.missingAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipt in this period has no amount recorded."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipts in this period have no amount recorded."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "pdf.report.period %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1501,6 +1524,40 @@
       }
     },
     "report.line.count %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipt"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld receipts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "report.missingAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No amount recorded"
+          }
+        }
+      }
+    },
+    "report.missingAmount.count": {
       "extractionState": "manual",
       "localizations": {
         "en": {

@@ -25,6 +25,8 @@ struct CategoryReport: Sendable {
     let lines: [Line]
     /// Every receipt in the period, including ones with no amount.
     let receiptCount: Int
+    /// How many of those carry no amount, so a missed one is visible rather than absent.
+    let missingAmountCount: Int
     let grandTotal: Decimal
     let currencyCode: String?
     let hasExcludedCurrencies: Bool
@@ -52,6 +54,7 @@ struct CategoryReport: Sendable {
         )
 
         receiptCount = totals.receiptCount
+        missingAmountCount = totals.unpricedCount
         grandTotal = totals.grandTotal
         currencyCode = totals.currencyCode
         hasExcludedCurrencies = totals.hasExcludedCurrencies

@@ -210,7 +210,7 @@ struct PDFBuilder: Sendable {
                 in: imageRect,
                 font: .systemFont(ofSize: PDFMetrics.FontSize.header),
                 alignment: .center,
-                color: .secondaryLabel
+                color: PDFMetrics.Ink.secondary
             )
         }
 
@@ -232,7 +232,7 @@ struct PDFBuilder: Sendable {
             in: CGRect(x: rect.minX, y: rect.minY, width: columnWidth, height: rect.height),
             font: font,
             alignment: .left,
-            color: .label
+            color: PDFMetrics.Ink.primary
         )
 
         Self.drawText(
@@ -240,7 +240,7 @@ struct PDFBuilder: Sendable {
             in: CGRect(x: rect.minX + columnWidth, y: rect.minY, width: columnWidth, height: rect.height),
             font: font,
             alignment: .center,
-            color: .label
+            color: PDFMetrics.Ink.primary
         )
 
         if let amount = ReceiptFormatting.amount(receipt.amount, currencyCode: receipt.currencyCode, defaultCode: defaultCurrencyCode) {
@@ -254,7 +254,7 @@ struct PDFBuilder: Sendable {
                 ),
                 font: font,
                 alignment: .right,
-                color: .label
+                color: PDFMetrics.Ink.primary
             )
         }
     }
@@ -286,7 +286,7 @@ struct PDFBuilder: Sendable {
             in: rect,
             font: .systemFont(ofSize: PDFMetrics.FontSize.footer),
             alignment: .center,
-            color: .secondaryLabel
+            color: PDFMetrics.Ink.secondary
         )
     }
 
@@ -362,7 +362,7 @@ struct PDFBuilder: Sendable {
             ),
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTitle, weight: .semibold),
             alignment: .left,
-            color: .label
+            color: PDFMetrics.Ink.primary
         )
         cursorY += PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
 
@@ -371,7 +371,7 @@ struct PDFBuilder: Sendable {
             in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryBody),
             alignment: .left,
-            color: .secondaryLabel
+            color: PDFMetrics.Ink.secondary
         )
         cursorY += PDFMetrics.Summary.rowHeight + PDFMetrics.Summary.sectionSpacing
 
@@ -412,6 +412,20 @@ struct PDFBuilder: Sendable {
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTotal, weight: .semibold)
         )
 
+        // Mirrors the in-app report: a receipt with no amount is reported, not dropped,
+        // so the exported copy cannot look complete when it is not.
+        if report.missingAmountCount > 0 {
+            cursorY += PDFMetrics.Summary.sectionSpacing
+            Self.drawText(
+                String(localized: "pdf.report.missingAmount \(report.missingAmountCount)"),
+                in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
+                font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
+                alignment: .left,
+                color: PDFMetrics.Ink.secondary
+            )
+            cursorY += PDFMetrics.Summary.rowHeight
+        }
+
         if report.hasExcludedCurrencies {
             cursorY += PDFMetrics.Summary.sectionSpacing
             Self.drawText(
@@ -419,7 +433,7 @@ struct PDFBuilder: Sendable {
                 in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
                 font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
                 alignment: .left,
-                color: .secondaryLabel
+                color: PDFMetrics.Ink.secondary
             )
         }
     }
@@ -451,7 +465,7 @@ struct PDFBuilder: Sendable {
             ),
             font: .systemFont(ofSize: PDFMetrics.FontSize.summaryTitle, weight: .semibold),
             alignment: .left,
-            color: .label
+            color: PDFMetrics.Ink.primary
         )
         cursorY += PDFMetrics.FontSize.summaryTitle * Self.summaryTitleLineHeightMultiple
             + PDFMetrics.Summary.titleBottomSpacing
@@ -496,7 +510,7 @@ struct PDFBuilder: Sendable {
                 in: CGRect(x: content.minX, y: cursorY, width: content.width, height: PDFMetrics.Summary.rowHeight),
                 font: .italicSystemFont(ofSize: PDFMetrics.FontSize.summaryBody),
                 alignment: .left,
-                color: .secondaryLabel
+                color: PDFMetrics.Ink.secondary
             )
         }
     }
@@ -518,17 +532,17 @@ struct PDFBuilder: Sendable {
         Self.drawText(
             month,
             in: CGRect(x: content.minX, y: y, width: monthWidth, height: height),
-            font: font, alignment: .left, color: .label
+            font: font, alignment: .left, color: PDFMetrics.Ink.primary
         )
         Self.drawText(
             count,
             in: CGRect(x: content.minX + monthWidth, y: y, width: countWidth, height: height),
-            font: font, alignment: .right, color: .label
+            font: font, alignment: .right, color: PDFMetrics.Ink.primary
         )
         Self.drawText(
             total,
             in: CGRect(x: content.minX + monthWidth + countWidth, y: y, width: totalWidth, height: height),
-            font: font, alignment: .right, color: .label
+            font: font, alignment: .right, color: PDFMetrics.Ink.primary
         )
 
         return y + height
@@ -541,7 +555,7 @@ struct PDFBuilder: Sendable {
             width: content.width,
             height: PDFMetrics.Summary.rulerThickness
         )
-        UIColor.separator.setFill()
+        PDFMetrics.Ink.rule.setFill()
         UIRectFill(rect)
         return y + PDFMetrics.Summary.rulerThickness + PDFMetrics.Summary.sectionSpacing
     }

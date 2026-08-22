@@ -21,6 +21,18 @@ enum PDFMetrics {
     static let slotSpacing: CGFloat = 16
     static let headerImageSpacing: CGFloat = 8
 
+    /// Ink colours for the page.
+    ///
+    /// Fixed values, never `UIColor.label` and friends. Those are dynamic: they resolve
+    /// against the current appearance, so on a device in dark mode they came out white
+    /// and the text was drawn white-on-white — present and selectable, but invisible and
+    /// unprintable. A PDF has no appearance mode; it is ink on paper.
+    enum Ink {
+        static let primary = UIColor.black
+        static let secondary = UIColor(white: 0.35, alpha: 1)
+        static let rule = UIColor(white: 0.75, alpha: 1)
+    }
+
     enum FontSize {
         static let header: CGFloat = 11
         static let footer: CGFloat = 9

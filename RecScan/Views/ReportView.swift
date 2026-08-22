@@ -103,6 +103,19 @@ struct ReportView: View {
             } label: {
                 Text("report.total").fontWeight(.semibold)
             }
+            // A receipt with no amount contributes nothing to the total, so without
+            // this line it would simply be missing -- and a missed entry is exactly
+            // what someone reads a report to notice.
+            if report.missingAmountCount > 0 {
+                LabeledContent {
+                    Text("report.missingAmount.count \(report.missingAmountCount)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("report.missingAmount", systemImage: SystemImage.needsReview)
+                        .foregroundStyle(.secondary)
+                }
+            }
         } footer: {
             if report.hasExcludedCurrencies {
                 Text("report.mixedCurrencies")

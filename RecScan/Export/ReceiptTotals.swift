@@ -28,6 +28,12 @@ struct ReceiptTotals<Key: Hashable & Sendable>: Sendable {
     let groups: [Group]
     /// Every receipt considered, including ones with no amount.
     let receiptCount: Int
+    /// Receipts in the period carrying no amount at all.
+    ///
+    /// Surfaced rather than silently dropped: a receipt with no amount is usually one
+    /// that has not been filled in yet, and a report that simply omits it hides the
+    /// omission behind a total that looks complete.
+    let unpricedCount: Int
     let grandTotal: Decimal
     /// The currency the totals are in, or `nil` when no receipt carried an amount.
     let currencyCode: String?
@@ -46,6 +52,7 @@ struct ReceiptTotals<Key: Hashable & Sendable>: Sendable {
         receiptCount = receipts.count
 
         let priced = receipts.filter { $0.amount != nil }
+        unpricedCount = receipts.count - priced.count
         let dominant = Self.dominantCurrencyCode(in: priced, defaultCode: defaultCurrencyCode)
         currencyCode = dominant
 

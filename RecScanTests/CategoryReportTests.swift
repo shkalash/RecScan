@@ -116,6 +116,40 @@ struct CategoryReportTests {
 
         #expect(result.receiptCount == 2)
         #expect(result.grandTotal == 10)
+        #expect(result.missingAmountCount == 1)
+    }
+
+    /// The report is read to spot a receipt that was never filled in, so the count has
+    /// to be reported rather than left to be inferred from a total that looks fine.
+    @Test("Receipts with no amount are reported, not silently dropped")
+    func reportsMissingAmounts() {
+        let result = report([
+            receipt(day: 1, amount: 10, category: fuel),
+            receipt(day: 2, amount: nil, category: fuel),
+            receipt(day: 3, amount: nil)
+        ])
+
+        #expect(result.missingAmountCount == 2)
+    }
+
+    @Test("Nothing missing means nothing to report")
+    func noMissingAmounts() {
+        let result = report([receipt(day: 1, amount: 10, category: fuel)])
+
+        #expect(result.missingAmountCount == 0)
+    }
+
+    @Test("A receipt outside the period is not counted as missing an amount")
+    func missingCountRespectsPeriod() {
+        let result = report(
+            [receipt(day: 1, amount: nil), receipt(day: 1, month: 7, amount: nil)],
+            interval: DateInterval(
+                start: TestCalendar.date(year: 2026, month: 4, day: 1),
+                end: TestCalendar.date(year: 2026, month: 5, day: 1)
+            )
+        )
+
+        #expect(result.missingAmountCount == 1)
     }
 
     @Test("Mixed currencies are excluded and flagged")
