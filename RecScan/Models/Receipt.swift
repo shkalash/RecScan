@@ -98,3 +98,26 @@ final class Receipt {
         self.searchIndex = searchIndex
     }
 }
+
+/// Hashable on the receipt's own identifier.
+///
+/// `PersistentModel` already refines `Hashable`, so this is not strictly required to
+/// satisfy `navigationDestination(for:)` — but that conformance arrives through the
+/// `@Model` macro, which means it exists only once the macro has been expanded. Stating
+/// it in source keeps the requirement visible without depending on expansion.
+///
+/// Identity is `id`, the UUID assigned at capture, rather than the object or its
+/// `persistentModelID`. That is the identity the app already treats as the receipt's own
+/// — it survives export and re-import (see `ArchiveMergePolicy`) — so two instances
+/// fetched from different contexts for the same receipt compare equal, which is what a
+/// navigation path needs when a view is popped and re-pushed.
+extension Receipt: Hashable {
+
+    static func == (lhs: Receipt, rhs: Receipt) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
