@@ -67,6 +67,7 @@ RecScan/
 ├── Filtering/   date presets, predicate construction, month grouping
 ├── Export/      PDF renderer, summary aggregation, category report, layout metrics
 ├── Archive/     zip export, import, manifest, merge policy
+├── Resources/   Localizable.xcstrings
 ├── Views/       SwiftUI screens and view models
 └── Support/     constants, formatting, settings, container factory
 
@@ -127,7 +128,7 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator. 268 tests in 29 suites.
+Swift Testing, run against the Simulator. 311 tests in 32 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
@@ -239,10 +240,17 @@ locale writes them. A month's spending can be read off the grid without opening 
 than losing the pill: a missing amount is the thing worth spotting, and an absent pill
 looks the same as a tile you have not read yet.
 
-The library filters on date range, free text, any combination of categories, and a
-"needs review" toggle; unreviewed receipts also carry a badge on their grid tile. Settings
-holds the default currency, the category list, and whether leaving a receipt saves the
-edits or asks.
+The library filters on date range, free text, any combination of categories —
+"Uncategorised" among them, since an absent category is the one a receipt lands in by
+being overlooked — and a "needs review" toggle; unreviewed receipts also carry a badge on
+their grid tile. Settings holds the default currency, the category list, and whether
+leaving a receipt saves the edits or asks.
+
+**A receipt with no amount is always flagged for review.** An amount is the point of the
+library, so one without it has not been accounted for, whatever else was filled in;
+clearing an amount off a confirmed receipt flags it again. That makes the badge mean
+"unfinished" rather than "unvisited", and one filter finds everything that was missed
+instead of needing a separate one per kind of gap.
 
 **Currency is stamped onto a receipt when it arrives**, read from the default in force at
 that moment. The setting decides what the next receipt gets and never rewrites history —
@@ -300,8 +308,8 @@ same archive twice is a no-op the second time.
 ## Status
 
 Implemented: capture, storage, library, detail editing, categories, filtering, the review
-sheet, import from Photos/Files/share sheet, OCR amount suggestions, PDF export, the
-category report, and archive import/export.
+sheet, import from Photos/Files/share sheet, OCR amount and date suggestions, PDF export,
+the per-currency category report, and archive import/export.
 
 Not yet built: Face ID lock, and converting between currencies in a report — which needs
 a live rate from somewhere, since Foundation formats currency but does not convert it.
