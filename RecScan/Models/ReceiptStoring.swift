@@ -37,7 +37,11 @@ protocol ReceiptStoring: Sendable {
     func attachRecognizedText(_ text: String, toReceiptWithID id: UUID) async throws
 
     /// Commits edited metadata to the receipt with the given identifier.
-    /// - Parameter confirming: whether the save also clears the review flag. Pass `false`
+    ///
+    /// A receipt with no amount stays flagged for review however it is saved: an amount
+    /// is what the library is for, so one without is never finished.
+    ///
+    /// - Parameter confirming: whether the save may clear the review flag. Pass `false`
     ///   to keep edits without marking the receipt as done with.
     func apply(_ edit: ReceiptEdit, toReceiptWithID id: UUID, confirming: Bool) async throws
 

@@ -28,6 +28,7 @@ struct ReceiptGridView: View {
             interval: interval,
             searchText: filter.searchText,
             categoryIDs: filter.categoryIDs,
+            includesUncategorised: filter.includesUncategorised,
             needsReviewOnly: filter.needsReviewOnly
         )
         _receipts = Query(

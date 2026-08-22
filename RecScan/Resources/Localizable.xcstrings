@@ -937,6 +937,17 @@
         }
       }
     },
+    "filter.category.uncategorised": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncategorised"
+          }
+        }
+      }
+    },
     "filter.custom.end": {
       "extractionState": "manual",
       "localizations": {
@@ -976,7 +987,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Receipts whose details you have not confirmed yet. They are marked with a dot in the library."
+            "value": "Receipts you have not confirmed yet, and any with no amount recorded. They are marked with a dot in the library."
           }
         }
       }

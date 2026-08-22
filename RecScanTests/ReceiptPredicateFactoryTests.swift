@@ -48,16 +48,20 @@ struct ReceiptPredicateFactoryTests {
         interval: DateInterval? = nil,
         searchText: String = "",
         categoryIDs: Set<UUID> = [],
+        includesUncategorised: Bool = false,
         needsReviewOnly: Bool = false
     ) throws -> [Receipt] {
-        try context.fetch(
-            FetchDescriptor<Receipt>(
-                predicate: ReceiptPredicateFactory.makePredicate(
-                    interval: interval, searchText: searchText,
-                    categoryIDs: categoryIDs, needsReviewOnly: needsReviewOnly
-                )
+        try fetch(
+            ReceiptPredicateFactory.makePredicate(
+                interval: interval, searchText: searchText,
+                categoryIDs: categoryIDs, includesUncategorised: includesUncategorised,
+                needsReviewOnly: needsReviewOnly
             )
         )
+    }
+
+    private func fetch(_ predicate: Predicate<Receipt>) throws -> [Receipt] {
+        try context.fetch(FetchDescriptor<Receipt>(predicate: predicate))
     }
 
     @Test("No bounds and no query returns everything")
@@ -247,4 +251,97 @@ struct ReceiptPredicateFactoryTests {
 
         #expect(try fetch(interval: nil, searchText: "zzz").isEmpty)
     }
+
+    // MARK: - Uncategorised
+
+    /// Runs through a real fetch, like the rest of this suite: the sentinel shape here is
+    /// exactly the kind that compiles and then matches the wrong rows.
+    @Test("Uncategorised on its own matches only receipts with no category")
+    func uncategorisedAlone() throws {
+        let fuel = UUID()
+        insert(day: 1, categoryID: fuel)
+        insert(day: 2, categoryID: nil)
+        insert(day: 3, categoryID: nil)
+        try context.save()
+
+        let matches = try fetch(
+            ReceiptPredicateFactory.makePredicate(
+                interval: nil, searchText: "", includesUncategorised: true
+            )
+        )
+
+        #expect(matches.count == 2)
+        #expect(matches.allSatisfy { $0.categoryID == nil })
+    }
+
+    /// The trap: an empty category set normally means "everything". With the
+    /// uncategorised flag on it must not, or the filter would return the whole library.
+    @Test("Uncategorised does not fall back to matching everything")
+    func uncategorisedIsNotAWildcard() throws {
+        insert(day: 1, categoryID: UUID())
+        insert(day: 2, categoryID: UUID())
+        insert(day: 3, categoryID: nil)
+        try context.save()
+
+        let matches = try fetch(
+            ReceiptPredicateFactory.makePredicate(
+                interval: nil, searchText: "", includesUncategorised: true
+            )
+        )
+
+        #expect(matches.count == 1)
+    }
+
+    @Test("Uncategorised combines with chosen categories rather than replacing them")
+    func uncategorisedCombinesWithCategories() throws {
+        let fuel = UUID()
+        let food = UUID()
+        insert(day: 1, categoryID: fuel)
+        insert(day: 2, categoryID: food)
+        insert(day: 3, categoryID: nil)
+        try context.save()
+
+        let matches = try fetch(
+            ReceiptPredicateFactory.makePredicate(
+                interval: nil, searchText: "", categoryIDs: [fuel], includesUncategorised: true
+            )
+        )
+
+        #expect(matches.count == 2)
+        #expect(Set(matches.map(\.categoryID)) == [fuel, nil])
+    }
+
+    @Test("Neither flag set still matches every category")
+    func noCategoryFilterMatchesEverything() throws {
+        insert(day: 1, categoryID: UUID())
+        insert(day: 2, categoryID: nil)
+        try context.save()
+
+        let matches = try fetch(
+            ReceiptPredicateFactory.makePredicate(interval: nil, searchText: "")
+        )
+
+        #expect(matches.count == 2)
+    }
+
+    @Test("Uncategorised still respects the date range and the review flag")
+    func uncategorisedComposesWithOtherTerms() throws {
+        insert(day: 5, month: 4, categoryID: nil, needsReview: true)
+        insert(day: 5, month: 4, categoryID: nil, needsReview: false)
+        insert(day: 5, month: 7, categoryID: nil, needsReview: true)
+        try context.save()
+
+        let april = DateInterval(
+            start: TestCalendar.date(year: 2026, month: 4, day: 1),
+            end: TestCalendar.date(year: 2026, month: 5, day: 1)
+        )
+        let matches = try fetch(
+            ReceiptPredicateFactory.makePredicate(
+                interval: april, searchText: "", includesUncategorised: true, needsReviewOnly: true
+            )
+        )
+
+        #expect(matches.count == 1)
+    }
+
 }

@@ -107,6 +107,13 @@ true, but SwiftData translates it to a store `CONTAINS`, where an empty operand 
 rows. So text — and only text — needs a branch, which is what keeps this at two literals
 rather than eight.
 
+The same trap caught *uncategorised*. Category membership is captured as `[UUID?]` —
+`categoryID` is optional — so putting a `nil` in that array looks like it should match
+rows with no category. It matches none: the array becomes a store `IN` list, and in SQL
+`NULL IN (...)` is never true, because NULL equals nothing, itself included. It needs an
+explicit `categoryID == nil` term. Found by a test against a real store, which is the only
+place either of these shows up.
+
 **The PDF is drawn with `UIGraphicsPDFRenderer`, not PDFKit.** `PDFPage(image:)` gives
 a page and nothing else — no header line, no page numbers, no two-up layout. Each page
 renders inside its own `autoreleasepool` with its image loaded inside the loop;

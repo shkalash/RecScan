@@ -149,8 +149,13 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         // Editing a receipt is the act of confirming it, so the prompt clears here as
         // well as from the review sheet -- otherwise a badge could only be cleared one way.
         // Parking edits with "Later" is the exception: the work is kept, the prompt stands.
+        //
+        // A receipt with no amount is never finished, whatever else was filled in. Saving
+        // one leaves it flagged, and clearing an amount off a confirmed receipt flags it
+        // again -- so "needs review" means exactly "not yet accounted for", and the badge
+        // and its filter are all it takes to find what was missed.
         if confirming {
-            receipt.needsReview = false
+            receipt.needsReview = edit.amount == nil
         }
 
         try modelContext.save()

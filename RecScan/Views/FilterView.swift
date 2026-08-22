@@ -60,11 +60,24 @@ struct FilterView: View {
                         // "All Categories" clears rather than being a value of its own,
                         // so it reads as the off switch for the whole section.
                         Button {
-                            filter.categoryIDs.removeAll()
+                            filter.clearCategories()
                         } label: {
                             categoryRow(
                                 title: Text("filter.category.all"),
-                                isOn: filter.categoryIDs.isEmpty,
+                                isOn: filter.matchesEveryCategory,
+                                isMuted: true
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        // Toggles like any other category, because that is how it reads:
+                        // one more thing to include, not a different kind of filter.
+                        Button {
+                            filter.includesUncategorised.toggle()
+                        } label: {
+                            categoryRow(
+                                title: Text("filter.category.uncategorised"),
+                                isOn: filter.includesUncategorised,
                                 isMuted: true
                             )
                         }
@@ -130,6 +143,7 @@ struct FilterView: View {
         preset: .thisQuarter,
         searchText: "coffee",
         categoryIDs: [PreviewFixture.primaryCategoryID, PreviewFixture.categoryIDs[1]],
+        includesUncategorised: true,
         needsReviewOnly: true
     )
     return FilterView(filter: $filter).previewLibrary()

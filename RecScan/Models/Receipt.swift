@@ -55,6 +55,11 @@ final class Receipt {
     /// dismissing a review sheet leaves the prompt standing rather than losing it. Rows
     /// already in the library default to `false`, so adding this does not light up a
     /// library that was fine.
+    ///
+    /// A receipt with no `amount` always carries this flag: an amount is the point of the
+    /// library, so one without it has not been accounted for yet. That makes the flag mean
+    /// "unfinished" rather than merely "unvisited", and one filter finds everything that
+    /// was missed.
     var needsReview: Bool = false
 
     /// The category this receipt belongs to, or `nil` for uncategorised.

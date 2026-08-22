@@ -82,21 +82,66 @@ extension ImagePipelineSuite {
 
         @Test("Confirming a receipt's details clears the flag")
         func editingClearsNeedsReview() async throws {
-            let id = try #require(try await store.importScan(
-                pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now
-            ).first)
+            let id = try await newReceiptID()
 
-            try await store.apply(
-                ReceiptEdit(
-                    capturedAt: .now, merchant: "Corner Store", amount: nil,
-                    currencyCode: nil, note: nil, categoryID: nil
-                ),
-                toReceiptWithID: id
-            )
+            try await store.apply(edit(amount: Decimal(12)), toReceiptWithID: id)
 
             // Editing is the act of confirming, so the badge clears here as well as from
             // the review sheet -- a flag with only one way out is a flag that sticks.
             #expect(try fetchAll().first?.needsReview == false)
+        }
+
+        // MARK: - No amount means unfinished
+
+        /// The flag means "not yet accounted for", not merely "not yet opened". An amount
+        /// is the point of the library, so a receipt without one is never done -- which is
+        /// what lets the review filter alone find everything that was missed.
+        @Test("Saving a receipt with no amount leaves it flagged")
+        func noAmountStaysFlagged() async throws {
+            let id = try await newReceiptID()
+
+            try await store.apply(edit(merchant: "Corner Store", amount: nil), toReceiptWithID: id)
+
+            #expect(try fetchAll().first?.needsReview == true)
+            // The rest of the edit still lands; only the flag is withheld.
+            #expect(try fetchAll().first?.merchant == "Corner Store")
+        }
+
+        @Test("Clearing the amount off a confirmed receipt flags it again")
+        func clearingTheAmountReflagsIt() async throws {
+            let id = try await newReceiptID()
+            try await store.apply(edit(amount: Decimal(12)), toReceiptWithID: id)
+            #expect(try fetchAll().first?.needsReview == false)
+
+            try await store.apply(edit(amount: nil), toReceiptWithID: id)
+
+            #expect(try fetchAll().first?.needsReview == true)
+        }
+
+        @Test("Parking edits never clears the flag, amount or not")
+        func parkingNeverConfirms() async throws {
+            let id = try await newReceiptID()
+
+            try await store.apply(edit(amount: Decimal(12)), toReceiptWithID: id, confirming: false)
+
+            #expect(try fetchAll().first?.needsReview == true)
+            #expect(try fetchAll().first?.amount == Decimal(12))
+        }
+
+        // MARK: - Helpers
+
+        /// Imports one receipt and returns its identifier. Imports arrive flagged.
+        private func newReceiptID() async throws -> UUID {
+            try #require(try await store.importScan(
+                pages: [TestImage.solid(width: 200, height: 300)], capturedAt: .now
+            ).first)
+        }
+
+        private func edit(merchant: String? = nil, amount: Decimal?) -> ReceiptEdit {
+            ReceiptEdit(
+                capturedAt: .now, merchant: merchant, amount: amount,
+                currencyCode: nil, note: nil, categoryID: nil
+            )
         }
 
         @Test("An empty scan is rejected")

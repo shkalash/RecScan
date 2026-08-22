@@ -14,6 +14,11 @@ struct ReceiptFilter: Hashable, Sendable {
     /// Categories to include. Empty means every category, which is also what the
     /// "All Categories" row selects — clearing rather than being a value of its own.
     var categoryIDs: Set<UUID>
+    /// Includes receipts with no category at all, alongside any chosen categories.
+    ///
+    /// Separate from `categoryIDs` because "uncategorised" is the absence of an id, not
+    /// an id of its own — and it is the one a receipt lands in by being overlooked.
+    var includesUncategorised: Bool
     /// Narrows to receipts whose details have not been confirmed yet.
     var needsReviewOnly: Bool
 
@@ -23,6 +28,7 @@ struct ReceiptFilter: Hashable, Sendable {
         customEnd: Date = Date(),
         searchText: String = "",
         categoryIDs: Set<UUID> = [],
+        includesUncategorised: Bool = false,
         needsReviewOnly: Bool = false
     ) {
         self.preset = preset
@@ -30,12 +36,17 @@ struct ReceiptFilter: Hashable, Sendable {
         self.customEnd = customEnd
         self.searchText = searchText
         self.categoryIDs = categoryIDs
+        self.includesUncategorised = includesUncategorised
         self.needsReviewOnly = needsReviewOnly
     }
 
     /// Whether the filter narrows the library at all. Drives the toolbar badge.
     var isActive: Bool {
-        preset != .allTime || !trimmedSearchText.isEmpty || !categoryIDs.isEmpty || needsReviewOnly
+        preset != .allTime
+            || !trimmedSearchText.isEmpty
+            || !categoryIDs.isEmpty
+            || includesUncategorised
+            || needsReviewOnly
     }
 
     /// Whether `id` is included. An empty selection includes everything.
@@ -51,6 +62,17 @@ struct ReceiptFilter: Hashable, Sendable {
         } else {
             categoryIDs.insert(id)
         }
+    }
+
+    /// Whether no category filtering is in effect at all.
+    var matchesEveryCategory: Bool {
+        categoryIDs.isEmpty && !includesUncategorised
+    }
+
+    /// Clears the whole category section back to "all".
+    mutating func clearCategories() {
+        categoryIDs.removeAll()
+        includesUncategorised = false
     }
 
     var trimmedSearchText: String {
