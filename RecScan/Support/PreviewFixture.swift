@@ -107,8 +107,6 @@ enum PreviewFixture {
         daysAgo: Int = 0,
         amount: Decimal? = Decimal(string: "42.50"),
         note: String? = nil,
-        pageIndex: Int = 0,
-        groupID: UUID? = nil,
         categoryID: UUID? = nil,
         needsReview: Bool = false
     ) -> Receipt {
@@ -126,8 +124,6 @@ enum PreviewFixture {
             amount: amount,
             currencyCode: "ILS",
             note: note,
-            groupID: groupID,
-            pageIndex: pageIndex,
             categoryID: categoryID,
             needsReview: needsReview,
             searchIndex: ReceiptSearchIndex.make(merchant: merchant, note: note, ocrText: nil)

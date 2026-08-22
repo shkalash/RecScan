@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 @testable import RecScan
 
 /// A throwaway directory that stands in for the app's Documents directory.
@@ -31,5 +32,10 @@ final class TemporaryDirectory: DocumentsDirectoryProviding, @unchecked Sendable
         FileManager.default.fileExists(
             atPath: documentsDirectory.appending(path: relativePath).path(percentEncoded: false)
         )
+    }
+
+    /// Decodes a stored image, for tests that care about what was actually written.
+    func image(atRelativePath relativePath: String) throws -> UIImage {
+        try ImageCodec.decodeImage(at: documentsDirectory.appending(path: relativePath))
     }
 }

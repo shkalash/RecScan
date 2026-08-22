@@ -23,7 +23,7 @@ struct CategoryReportTests {
             id: id, capturedAt: date, createdAt: date, modifiedAt: date,
             relativePath: "Receipts/\(id.uuidString).heic",
             merchant: nil, amount: amount, currencyCode: currency,
-            note: nil, ocrText: nil, groupID: nil, pageIndex: 0,
+            note: nil, ocrText: nil,
             categoryID: category, needsReview: false
         )
     }

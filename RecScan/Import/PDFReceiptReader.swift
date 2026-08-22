@@ -3,11 +3,11 @@ import Foundation
 import PDFKit
 import UIKit
 
-/// Turns a PDF into receipts.
+/// Turns a PDF into a receipt.
 ///
 /// Responsibilities:
-/// - Rasterise each page to an image.
-/// - Lift any embedded text out of the page.
+/// - Rasterise every page and join them into one image.
+/// - Lift any embedded text out of the document.
 ///
 /// ## Why pages become images
 /// A PDF page could have been stored as-is, but the whole library — thumbnails, zoom, PDF
@@ -18,36 +18,49 @@ import UIKit
 /// The text is not thrown away though: a PDF receipt has real, selectable text, so it goes
 /// straight into `ocrText`. That is strictly better than the OCR pass would produce, and it
 /// makes the receipt searchable the moment it lands.
+///
+/// ## Why a multi-page PDF is one receipt
+/// A receipt long enough to need a second page is still one purchase. Splitting it per page
+/// produced a tile, a review entry and a report line for each — one shop billed several
+/// times over. The pages are stacked into a single tall image instead.
 enum PDFReceiptReader {
 
     /// Rendered at twice the page's natural size so text stays legible when zoomed.
     private static let renderScale: CGFloat = 2
 
-    /// One item per page, all sharing a group so they read as a single document.
+    /// One item for the whole document.
+    ///
+    /// - Returns: a single-element array, or empty when the data is not a readable PDF.
+    ///   An array rather than an optional so the import routes stay uniform.
     static func items(from data: Data, capturedAt: ImportDateReader.Result) -> [ReceiptImportItem] {
         guard let document = PDFDocument(data: data), document.pageCount > 0 else { return [] }
 
-        let groupID: UUID? = document.pageCount > 1 ? UUID() : nil
-        var items: [ReceiptImportItem] = []
-        items.reserveCapacity(document.pageCount)
+        var images: [UIImage] = []
+        images.reserveCapacity(document.pageCount)
+        var text: [String] = []
 
         for index in 0..<document.pageCount {
             autoreleasepool {
                 guard let page = document.page(at: index) else { return }
-                let image = render(page)
-                items.append(
-                    ReceiptImportItem(
-                        image: image,
-                        capturedAt: capturedAt.date,
-                        dateIsCertain: capturedAt.isCertain,
-                        ocrText: page.string?.trimmingCharacters(in: .whitespacesAndNewlines),
-                        groupID: groupID,
-                        pageIndex: index
-                    )
-                )
+                images.append(render(page))
+                if let pageText = page.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !pageText.isEmpty {
+                    text.append(pageText)
+                }
             }
         }
-        return items
+
+        guard let merged = ImageStitcher.stack(images) else { return [] }
+
+        return [
+            ReceiptImportItem(
+                image: merged,
+                capturedAt: capturedAt.date,
+                // Joined in page order, so an amount on the last page is still found and
+                // the search index covers the whole document.
+                ocrText: text.isEmpty ? nil : text.joined(separator: "\n")
+            )
+        ]
     }
 
     private static func render(_ page: PDFPage) -> UIImage {

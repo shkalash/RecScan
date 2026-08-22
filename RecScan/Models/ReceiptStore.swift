@@ -25,48 +25,56 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
     private let fileStore: any ImageFileStoring
     private let logger = LogCategory.persistence.logger
 
-    init(modelContainer: ModelContainer, fileStore: any ImageFileStoring = ImageFileStore()) {
+    /// Read at import time, not at init: the setting can change while the app runs, and
+    /// each receipt should be stamped with whatever was current when it arrived.
+    /// Injected so tests do not depend on `UserDefaults.standard`.
+    private let currentDefaultCurrency: @Sendable () -> String
+
+    init(
+        modelContainer: ModelContainer,
+        fileStore: any ImageFileStoring = ImageFileStore(),
+        currentDefaultCurrency: @escaping @Sendable () -> String = { AppSettings.defaultCurrencyCode() }
+    ) {
         self.modelContainer = modelContainer
         self.modelExecutor = DefaultSerialModelExecutor(modelContext: ModelContext(modelContainer))
         self.fileStore = fileStore
+        self.currentDefaultCurrency = currentDefaultCurrency
     }
 
     // MARK: - Import
 
+    /// Stores one scan session as a single receipt.
+    ///
+    /// A multi-page session is one long receipt that did not fit the frame, so the pages
+    /// are stacked into one image rather than becoming a row each.
     @discardableResult
     func importScan(pages: [UIImage], capturedAt: Date = Date()) async throws -> [UUID] {
         guard !pages.isEmpty else { throw ReceiptStoreError.emptyImportRequest }
-
-        // A single-page scan is not a "group"; only multi-page sessions get an identity.
-        let groupID: UUID? = pages.count > 1 ? UUID() : nil
-        var createdIDs: [UUID] = []
-        createdIDs.reserveCapacity(pages.count)
-
-        for (index, page) in pages.enumerated() {
-            let id = UUID()
-            // The file is written first. If the save below throws, the worst case is a
-            // stray file with no row — invisible and harmless. The reverse order would
-            // leave a row pointing at nothing, which the library cannot render.
-            let relativePath = try fileStore.write(page, for: id)
-
-            let now = Date()
-            let receipt = Receipt(
-                id: id,
-                capturedAt: capturedAt,
-                createdAt: now,
-                modifiedAt: now,
-                relativePath: relativePath,
-                groupID: groupID,
-                pageIndex: index,
-                needsReview: true
-            )
-            modelContext.insert(receipt)
-            createdIDs.append(id)
+        guard let merged = ImageStitcher.stack(pages) else {
+            throw ReceiptStoreError.emptyImportRequest
         }
 
+        let id = UUID()
+        // The file is written first. If the save below throws, the worst case is a
+        // stray file with no row — invisible and harmless. The reverse order would
+        // leave a row pointing at nothing, which the library cannot render.
+        let relativePath = try fileStore.write(merged, for: id)
+
+        let now = Date()
+        let receipt = Receipt(
+            id: id,
+            capturedAt: capturedAt,
+            createdAt: now,
+            modifiedAt: now,
+            relativePath: relativePath,
+            currencyCode: currentDefaultCurrency(),
+            needsReview: true
+        )
+        modelContext.insert(receipt)
+
         try modelContext.save()
-        logger.info("Imported \(createdIDs.count, privacy: .public) receipt page(s).")
-        return createdIDs
+        logger.info("Imported a scan of \(pages.count, privacy: .public) page(s).")
+        return [id]
     }
 
     // MARK: - Import from files
@@ -74,6 +82,7 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
     @discardableResult
     func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID] {
         guard !items.isEmpty else { throw ReceiptStoreError.emptyImportRequest }
+        let defaultCurrency = currentDefaultCurrency()
 
         var createdIDs: [UUID] = []
         createdIDs.reserveCapacity(items.count)
@@ -91,12 +100,12 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
                 createdAt: now,
                 modifiedAt: now,
                 relativePath: relativePath,
+                currencyCode: defaultCurrency,
                 ocrText: item.ocrText,
-                groupID: item.groupID,
-                pageIndex: item.pageIndex,
-                // Only flagged when the date had to be guessed: a batch of photos that all
-                // carry EXIF dates should leave nothing needing attention.
-                needsReview: !item.dateIsCertain,
+                // Everything imported is flagged until it has been through the review
+                // sheet. A confident date does not make a receipt reviewed -- merchant,
+                // amount and category are all still empty.
+                needsReview: true,
                 searchIndex: ReceiptSearchIndex.make(
                     merchant: nil, note: nil, ocrText: item.ocrText
                 )
@@ -245,10 +254,7 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
 
     func allReceipts() async throws -> [ReceiptSnapshot] {
         let descriptor = FetchDescriptor<Receipt>(
-            sortBy: [
-                SortDescriptor(\Receipt.capturedAt, order: .forward),
-                SortDescriptor(\Receipt.pageIndex, order: .forward)
-            ]
+            sortBy: [SortDescriptor(\Receipt.capturedAt, order: .forward)]
         )
         return try modelContext.fetch(descriptor).map(ReceiptSnapshot.init)
     }
@@ -381,8 +387,6 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
             currencyCode: entry.currencyCode,
             note: entry.note,
             ocrText: entry.ocrText,
-            groupID: entry.groupID,
-            pageIndex: entry.pageIndex,
             categoryID: localCategoryID(for: entry.categoryID, mapping: categoryMapping),
             needsReview: entry.requiresReview,
             searchIndex: ReceiptSearchIndex.make(
@@ -408,8 +412,6 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
         receipt.currencyCode = entry.currencyCode
         receipt.note = entry.note
         receipt.ocrText = entry.ocrText
-        receipt.groupID = entry.groupID
-        receipt.pageIndex = entry.pageIndex
         receipt.categoryID = localCategoryID(for: entry.categoryID, mapping: categoryMapping)
         receipt.needsReview = entry.requiresReview
         receipt.searchIndex = ReceiptSearchIndex.make(

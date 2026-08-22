@@ -12,10 +12,9 @@ import SwiftUI
 /// system menu, which does not accept text input. A popover carrying a real list is the
 /// only way to type a new name in the same gesture that picks an existing one.
 ///
-/// The field takes focus as the popover opens, so typing a new category needs no extra
-/// tap. Focus is requested after a short hop rather than in `onAppear`: until the
-/// presentation animation finishes the field is not yet in the window, and a focus
-/// request that lands early is silently dropped.
+/// The name field deliberately does not take focus when the popover opens. Picking an
+/// existing category is the common case, and a keyboard covering the list to serve the
+/// rarer one is the wrong trade.
 struct CategoryPicker: View {
 
     @Binding var selection: UUID?
@@ -26,7 +25,6 @@ struct CategoryPicker: View {
     @State private var isPresented = false
     @State private var newName = ""
     @State private var presentedError: PresentableError?
-    @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
         Button {
@@ -61,7 +59,6 @@ struct CategoryPicker: View {
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
                         .submitLabel(.done)
-                        .focused($isNameFieldFocused)
                         .onSubmit { Task { await create() } }
                 }
             }
@@ -87,10 +84,6 @@ struct CategoryPicker: View {
             }
         }
         .listStyle(.plain)
-        .task {
-            try? await Task.sleep(for: .milliseconds(AppConstants.Interaction.focusDelayMilliseconds))
-            isNameFieldFocused = true
-        }
     }
 
     private func row(title: Text, isSelected: Bool, isMuted: Bool = false) -> some View {
@@ -101,6 +94,10 @@ struct CategoryPicker: View {
         } label: {
             title.foregroundStyle(isMuted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
         }
+        // The row is mostly empty space between the name and the checkmark, and none of
+        // it is hit-tested without an explicit shape -- so the tap only landed on the
+        // word itself.
+        .contentShape(.rect)
     }
 
     // MARK: - Derived
@@ -139,7 +136,6 @@ struct CategoryPicker: View {
         do {
             selection = try await receiptStore.createCategory(named: name)
             newName = ""
-            isNameFieldFocused = false
             isPresented = false
         } catch {
             presentedError = PresentableError(titleKey: "error.category.create.title", error: error)

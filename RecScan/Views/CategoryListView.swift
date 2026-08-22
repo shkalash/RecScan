@@ -46,6 +46,10 @@ struct CategoryListView: View {
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                             }
+                            // Without this the row is only tappable where it happens to
+                            // have drawn text; the gap between name and chevron is not
+                            // hit-tested at all.
+                            .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
                     }
@@ -62,7 +66,15 @@ struct CategoryListView: View {
         .alert("category.rename.title", isPresented: isRenaming) {
             TextField("category.new.placeholder", text: $renamedName)
             Button("common.cancel", role: .cancel) { renaming = nil }
-            Button("common.save") { Task { await commitRename() } }
+            // The id and name are read here, synchronously, rather than inside the
+            // task: dismissing the alert flips `isRenaming`, which clears `renaming`
+            // before an async body would get to look at it -- which is exactly how the
+            // rename silently reverted.
+            Button("common.save") {
+                guard let id = renaming?.id else { return }
+                let name = renamedName
+                Task { await commitRename(id: id, to: name) }
+            }
         }
         .errorAlert($presentedError)
     }
@@ -85,14 +97,13 @@ struct CategoryListView: View {
         }
     }
 
-    private func commitRename() async {
-        guard let renaming else { return }
+    private func commitRename(id: UUID, to name: String) async {
         do {
-            try await receiptStore.renameCategory(id: renaming.id, to: renamedName)
+            try await receiptStore.renameCategory(id: id, to: name)
         } catch {
             presentedError = PresentableError(titleKey: "error.category.rename.title", error: error)
         }
-        self.renaming = nil
+        renaming = nil
     }
 
     private func delete(_ offsets: IndexSet) async {

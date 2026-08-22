@@ -24,8 +24,6 @@ struct ReceiptReviewViewModelTests {
             currencyCode: nil,
             note: nil,
             ocrText: nil,
-            groupID: nil,
-            pageIndex: 0,
             categoryID: categoryID,
             needsReview: true
         )
@@ -233,8 +231,6 @@ struct ReceiptReviewViewModelTests {
             currencyCode: nil,
             note: nil,
             ocrText: Self.recognizedReceipt,
-            groupID: nil,
-            pageIndex: 0,
             categoryID: nil,
             needsReview: true
         )

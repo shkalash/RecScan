@@ -49,12 +49,6 @@ final class Receipt {
     /// Recognised text, populated asynchronously after capture. Drives search.
     var ocrText: String?
 
-    /// Shared by every page of a multi-page scan session. `nil` for single-page receipts.
-    var groupID: UUID?
-
-    /// Position within a multi-page group. Always `0` for single-page receipts.
-    var pageIndex: Int = 0
-
     /// Whether the details still want confirming.
     ///
     /// Set when a receipt is created and cleared once its details are confirmed, so
@@ -85,8 +79,6 @@ final class Receipt {
         currencyCode: String? = nil,
         note: String? = nil,
         ocrText: String? = nil,
-        groupID: UUID? = nil,
-        pageIndex: Int = 0,
         categoryID: UUID? = nil,
         needsReview: Bool = false,
         searchIndex: String = ""
@@ -101,8 +93,6 @@ final class Receipt {
         self.currencyCode = currencyCode
         self.note = note
         self.ocrText = ocrText
-        self.groupID = groupID
-        self.pageIndex = pageIndex
         self.categoryID = categoryID
         self.needsReview = needsReview
         self.searchIndex = searchIndex

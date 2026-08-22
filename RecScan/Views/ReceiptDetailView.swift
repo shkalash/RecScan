@@ -89,10 +89,6 @@ struct ReceiptDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             }
-        } footer: {
-            if let pageLabel {
-                Label { pageLabel } icon: { Image(systemName: SystemImage.pages) }
-            }
         }
     }
 
@@ -185,11 +181,6 @@ struct ReceiptDetailView: View {
     // MARK: - Derived state
 
     private var hasUnsavedChanges: Bool { edit != committedEdit }
-
-    private var pageLabel: Text? {
-        guard receipt.groupID != nil else { return nil }
-        return Text("detail.page.indicator \(receipt.pageIndex + 1)")
-    }
 
     // MARK: - Actions
 

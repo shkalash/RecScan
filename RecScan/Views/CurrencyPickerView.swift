@@ -56,6 +56,9 @@ struct CurrencyPickerView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                // Same reason as the category rows: the empty space either side of the
+                // label is not hit-tested unless the row is given a shape.
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
         }

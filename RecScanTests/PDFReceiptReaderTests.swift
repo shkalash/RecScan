@@ -26,29 +26,28 @@ struct PDFReceiptReaderTests {
         ImportDateReader.Result(date: TestCalendar.date(year: 2026, month: 7, day: 4), isCertain: true)
     }
 
-    @Test("Each page becomes its own receipt")
-    func onePagePerReceipt() {
+    /// A multi-page PDF is one long receipt, not several.
+    @Test("A multi-page PDF becomes a single item")
+    func onePDFIsOneReceipt() {
         let items = PDFReceiptReader.items(from: pdfData(pageCount: 3), capturedAt: certainDate)
 
-        #expect(items.count == 3)
-        #expect(items.map(\.pageIndex) == [0, 1, 2])
+        #expect(items.count == 1)
     }
 
-    @Test("Pages of one document share a group")
-    func pagesShareAGroup() throws {
-        let items = PDFReceiptReader.items(from: pdfData(pageCount: 3), capturedAt: certainDate)
+    @Test("The pages are stacked, so the image is as tall as all of them together")
+    func stacksPages() throws {
+        let one = try #require(PDFReceiptReader.items(from: pdfData(pageCount: 1), capturedAt: certainDate).first)
+        let three = try #require(PDFReceiptReader.items(from: pdfData(pageCount: 3), capturedAt: certainDate).first)
 
-        let groupID = try #require(items.first?.groupID)
-        #expect(items.allSatisfy { $0.groupID == groupID })
+        #expect(three.image.size.width == one.image.size.width)
+        #expect(three.image.size.height == one.image.size.height * 3)
     }
 
-    @Test("A single-page PDF is not given a group")
-    func singlePageHasNoGroup() {
+    @Test("A single-page PDF still produces one item")
+    func singlePage() {
         let items = PDFReceiptReader.items(from: pdfData(pageCount: 1), capturedAt: certainDate)
 
-        // A group means "these belong together"; one page belongs with nothing.
         #expect(items.count == 1)
-        #expect(items[0].groupID == nil)
     }
 
     @Test("Embedded text is lifted into ocrText")
@@ -70,13 +69,14 @@ struct PDFReceiptReaderTests {
         #expect(image.size.height > image.size.width)
     }
 
-    @Test("The capture date and its certainty carry to every page")
-    func carriesDate() {
-        let uncertain = ImportDateReader.Result(date: Date(), isCertain: false)
+    @Test("The capture date carries onto the item")
+    func carriesDate() throws {
+        let date = TestCalendar.date(year: 2026, month: 2, day: 9)
+        let result = ImportDateReader.Result(date: date, isCertain: false)
 
-        let items = PDFReceiptReader.items(from: pdfData(pageCount: 2), capturedAt: uncertain)
+        let item = try #require(PDFReceiptReader.items(from: pdfData(pageCount: 2), capturedAt: result).first)
 
-        #expect(items.allSatisfy { !$0.dateIsCertain })
+        #expect(item.capturedAt == date)
     }
 
     @Test("Data that is not a PDF yields nothing rather than crashing")

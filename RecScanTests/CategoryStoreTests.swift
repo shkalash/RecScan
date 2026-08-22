@@ -116,7 +116,10 @@ extension ImagePipelineSuite {
         func deleteIsScoped() async throws {
             let kept = try await store.createCategory(named: "Keep")
             let removed = try await store.createCategory(named: "Remove")
-            let ids = try await store.importScan(pages: [page(), page()], capturedAt: .now)
+            var ids: [UUID] = []
+            for _ in 0..<2 {
+                ids += try await store.importScan(pages: [page()], capturedAt: .now)
+            }
 
             for (id, category) in zip(ids, [kept, removed]) {
                 try await store.apply(

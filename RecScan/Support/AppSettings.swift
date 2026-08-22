@@ -22,11 +22,12 @@ enum AppSettings {
     /// for a few region-less locales.
     static let fallbackCurrencyCode = "USD"
 
-    /// The currency to assume for receipts that carry none of their own.
+    /// The currency stamped onto receipts as they are created.
     ///
-    /// Receipts store `nil` rather than being stamped with this at capture time, so
-    /// changing the setting re-renders every unstamped receipt retroactively — which is
-    /// the whole point of having the setting.
+    /// Read once, at import, and written onto the receipt. Changing the setting affects
+    /// what arrives next and never rewrites history: a receipt paid in shekels stays in
+    /// shekels when the default later moves to euros. The fallback at render time exists
+    /// only for rows created before currency was stamped.
     static func defaultCurrencyCode(
         defaults: UserDefaults = .standard,
         locale: Locale = .current

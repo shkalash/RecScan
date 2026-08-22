@@ -42,7 +42,9 @@ extension ImagePipelineSuite {
         @Test("An archive contains a manifest and one image per receipt")
         func archiveContents() async throws {
             let library = try Library()
-            _ = try await library.store.importScan(pages: [page(), page()], capturedAt: .now)
+            for _ in 0..<2 {
+                _ = try await library.store.importScan(pages: [page()], capturedAt: .now)
+            }
             let receipts = try await library.store.allReceipts()
 
             let url = try ArchiveExporter(fileStore: library.fileStore).makeArchive(receipts: receipts)
@@ -79,10 +81,12 @@ extension ImagePipelineSuite {
         func augustArchiveMergesIntoSeptemberLibrary() async throws {
             // August: two receipts, exported.
             let august = try Library()
-            _ = try await august.store.importScan(
-                pages: [page(), page()],
-                capturedAt: TestCalendar.date(year: 2026, month: 8, day: 12)
-            )
+            for _ in 0..<2 {
+                _ = try await august.store.importScan(
+                    pages: [page()],
+                    capturedAt: TestCalendar.date(year: 2026, month: 8, day: 12)
+                )
+            }
             let archive = try ArchiveExporter(fileStore: august.fileStore)
                 .makeArchive(receipts: try await august.store.allReceipts())
 
@@ -104,7 +108,9 @@ extension ImagePipelineSuite {
         @Test("Importing the same archive twice changes nothing the second time")
         func doubleImportIsIdempotent() async throws {
             let source = try Library()
-            _ = try await source.store.importScan(pages: [page(), page()], capturedAt: .now)
+            for _ in 0..<2 {
+                _ = try await source.store.importScan(pages: [page()], capturedAt: .now)
+            }
             let archive = try ArchiveExporter(fileStore: source.fileStore)
                 .makeArchive(receipts: try await source.store.allReceipts())
 
@@ -211,7 +217,7 @@ extension ImagePipelineSuite {
                 capturedAt: .now, createdAt: .now, modifiedAt: .now,
                 fileName: "Receipts/gone.heic",
                 merchant: nil, amount: nil, currencyCode: nil,
-                note: nil, ocrText: nil, groupID: nil, pageIndex: 0,
+                note: nil, ocrText: nil,
                 categoryID: nil, needsReview: nil
             )
 
@@ -308,8 +314,10 @@ extension ImagePipelineSuite {
             #expect(try target.receipts().first?.needsReview == true)
         }
 
-        @Test("Multi-page groups survive the round trip")
-        func groupsSurvive() async throws {
+        /// A three-page scan is one receipt before the archive and must still be one
+        /// after it, rather than being split back apart on the way in.
+        @Test("A stitched multi-page scan survives the round trip as one receipt")
+        func multiPageScanSurvives() async throws {
             let source = try Library()
             _ = try await source.store.importScan(pages: [page(), page(), page()], capturedAt: .now)
             let archive = try ArchiveExporter(fileStore: source.fileStore)
@@ -320,11 +328,7 @@ extension ImagePipelineSuite {
                 try ArchiveImporter().read(archiveAt: archive).receipts, categories: []
             )
 
-            let restored = try target.receipts().sorted { $0.pageIndex < $1.pageIndex }
-            let groupID = try #require(restored.first?.groupID)
-            #expect(restored.count == 3)
-            #expect(restored.allSatisfy { $0.groupID == groupID })
-            #expect(restored.map(\.pageIndex) == [0, 1, 2])
+            #expect(try target.receipts().count == 1)
         }
     }
 }

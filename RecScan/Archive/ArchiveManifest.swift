@@ -29,8 +29,6 @@ struct ArchiveManifest: Codable, Equatable {
         let currencyCode: String?
         let note: String?
         let ocrText: String?
-        let groupID: UUID?
-        let pageIndex: Int
         /// Points at an entry in the manifest's `categories`.
         let categoryID: UUID?
         /// Optional so a v1 archive, which has no such key, still decodes. Read through
@@ -116,8 +114,6 @@ extension ArchiveManifest.Entry {
             currencyCode: receipt.currencyCode,
             note: receipt.note,
             ocrText: receipt.ocrText,
-            groupID: receipt.groupID,
-            pageIndex: receipt.pageIndex,
             categoryID: receipt.categoryID,
             needsReview: receipt.needsReview
         )

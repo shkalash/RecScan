@@ -22,8 +22,7 @@ enum ReceiptImportReader {
         return [
             ReceiptImportItem(
                 image: image,
-                capturedAt: captured.date,
-                dateIsCertain: captured.isCertain
+                capturedAt: captured.date
             )
         ]
     }

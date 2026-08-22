@@ -24,10 +24,6 @@ enum AppConstants {
 
     /// Timings for interactions that must wait on a presentation animation.
     enum Interaction {
-        /// Delay before requesting focus inside a freshly presented popover or sheet.
-        /// Short enough to feel immediate, long enough that the field is in the window.
-        static let focusDelayMilliseconds = 350
-
         /// Window for gathering files that arrive one callback at a time. Long enough to
         /// catch a burst from one share, short enough that a single file still feels
         /// immediate.

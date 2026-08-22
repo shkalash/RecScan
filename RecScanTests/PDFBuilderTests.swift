@@ -41,8 +41,6 @@ extension ImagePipelineSuite {
                 currencyCode: "USD",
                 note: nil,
                 ocrText: ocrText,
-                groupID: nil,
-                pageIndex: 0,
                 categoryID: nil,
                 needsReview: false
             )

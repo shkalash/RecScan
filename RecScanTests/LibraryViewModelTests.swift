@@ -101,8 +101,6 @@ struct LibraryViewModelTests {
             currencyCode: nil,
             note: nil,
             ocrText: nil,
-            groupID: nil,
-            pageIndex: 0,
             categoryID: nil,
             needsReview: false
         )

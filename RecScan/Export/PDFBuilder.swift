@@ -52,9 +52,11 @@ struct PDFBuilder: Sendable {
     ) throws -> URL {
         guard !receipts.isEmpty else { throw PDFBuildError.noReceiptsSelected }
 
+        // `createdAt` breaks ties so a batch captured with one timestamp still lands in
+        // the order it was added, rather than an order the sort does not define.
         let ordered = receipts.sorted { lhs, rhs in
             lhs.capturedAt == rhs.capturedAt
-                ? lhs.pageIndex < rhs.pageIndex
+                ? lhs.createdAt < rhs.createdAt
                 : lhs.capturedAt < rhs.capturedAt
         }
         let pages = ordered.chunked(into: options.layout.slotsPerPage)

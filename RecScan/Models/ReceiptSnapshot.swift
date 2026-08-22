@@ -21,8 +21,6 @@ struct ReceiptSnapshot: Sendable, Identifiable, Hashable {
     let currencyCode: String?
     let note: String?
     let ocrText: String?
-    let groupID: UUID?
-    let pageIndex: Int
     let categoryID: UUID?
     let needsReview: Bool
 }
@@ -40,8 +38,6 @@ extension ReceiptSnapshot {
             currencyCode: receipt.currencyCode,
             note: receipt.note,
             ocrText: receipt.ocrText,
-            groupID: receipt.groupID,
-            pageIndex: receipt.pageIndex,
             categoryID: receipt.categoryID,
             needsReview: receipt.needsReview
         )

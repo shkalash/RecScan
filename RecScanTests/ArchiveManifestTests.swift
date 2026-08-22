@@ -17,8 +17,6 @@ struct ArchiveManifestTests {
             currencyCode: "ILS",
             note: "lunch",
             ocrText: "TOTAL 12.50",
-            groupID: nil,
-            pageIndex: 0,
             categoryID: nil,
             needsReview: true
         )
@@ -73,8 +71,7 @@ struct ArchiveManifestTests {
               "capturedAt": "2026-07-04T10:00:00Z",
               "createdAt": "2026-07-04T10:00:00Z",
               "modifiedAt": "2026-07-04T10:00:00Z",
-              "fileName": "Receipts/old.heic",
-              "pageIndex": 0
+              "fileName": "Receipts/old.heic"
             }
           ]
         }

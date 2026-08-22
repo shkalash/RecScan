@@ -32,10 +32,7 @@ struct ReceiptGridView: View {
         )
         _receipts = Query(
             filter: predicate,
-            sort: [
-                SortDescriptor(\Receipt.capturedAt, order: .reverse),
-                SortDescriptor(\Receipt.pageIndex, order: .forward)
-            ]
+            sort: [SortDescriptor(\Receipt.capturedAt, order: .reverse)]
         )
     }
 

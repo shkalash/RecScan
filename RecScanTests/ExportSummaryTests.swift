@@ -27,8 +27,6 @@ struct ExportSummaryTests {
             currencyCode: currency,
             note: nil,
             ocrText: nil,
-            groupID: nil,
-            pageIndex: 0,
             categoryID: nil,
             needsReview: false
         )

@@ -16,8 +16,8 @@ protocol ReceiptStoring: Sendable {
 
     /// Persists one scan session.
     ///
-    /// A session of more than one page produces sibling rows sharing a `groupID`,
-    /// an identical `capturedAt`, and sequential `pageIndex` values.
+    /// A session of more than one page becomes a single receipt: the pages are stacked
+    /// into one tall image, because a receipt that spans pages is still one purchase.
     /// - Returns: the identifiers of the created receipts, in page order.
     @discardableResult
     func importScan(pages: [UIImage], capturedAt: Date) async throws -> [UUID]

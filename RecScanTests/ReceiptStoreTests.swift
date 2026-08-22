@@ -22,7 +22,7 @@ extension ImagePipelineSuite {
             )
         }
 
-        @Test("A single-page scan creates one row with its image on disk and no group")
+        @Test("A single-page scan creates one row with its image on disk")
         func importsSinglePage() async throws {
             let ids = try await store.importScan(pages: [TestImage.solid(width: 400, height: 600)], capturedAt: .now)
 
@@ -30,33 +30,43 @@ extension ImagePipelineSuite {
 
             let receipts = try fetchAll()
             let receipt = try #require(receipts.first)
-            #expect(receipt.groupID == nil)
-            #expect(receipt.pageIndex == 0)
             #expect(directory.fileExists(atRelativePath: receipt.relativePath))
         }
 
-        @Test("A multi-page scan shares one group, one capture date and sequential page indexes")
-        func importsMultiplePagesAsAGroup() async throws {
+        /// A receipt long enough to need three frames is still one purchase.
+        @Test("A multi-page scan becomes a single receipt")
+        func importsMultiplePagesAsOneReceipt() async throws {
             let capturedAt = TestCalendar.date(year: 2026, month: 3, day: 4)
             let pages = (0..<3).map { _ in TestImage.solid(width: 300, height: 400) }
 
-            _ = try await store.importScan(pages: pages, capturedAt: capturedAt)
+            let ids = try await store.importScan(pages: pages, capturedAt: capturedAt)
 
-            let receipts = try fetchAll().sorted { $0.pageIndex < $1.pageIndex }
-            #expect(receipts.count == 3)
-
-            let groupID = try #require(receipts.first?.groupID)
-            #expect(receipts.allSatisfy { $0.groupID == groupID })
-            #expect(receipts.allSatisfy { $0.capturedAt == capturedAt })
-            #expect(receipts.map(\.pageIndex) == [0, 1, 2])
+            #expect(ids.count == 1)
+            let receipts = try fetchAll()
+            #expect(receipts.count == 1)
+            #expect(receipts.first?.capturedAt == capturedAt)
         }
 
-        @Test("Every imported page gets its own distinct file")
-        func eachPageGetsItsOwnFile() async throws {
-            _ = try await store.importScan(
-                pages: [TestImage.solid(width: 200, height: 300), TestImage.solid(width: 200, height: 300)],
-                capturedAt: .now
-            )
+        @Test("The pages of a scan are stacked into one taller image")
+        func stacksPagesVertically() async throws {
+            let pages = (0..<3).map { _ in TestImage.solid(width: 300, height: 400) }
+
+            _ = try await store.importScan(pages: pages, capturedAt: .now)
+
+            let receipt = try #require(try fetchAll().first)
+            let image = try directory.image(atRelativePath: receipt.relativePath)
+            #expect(image.size.width == 300)
+            #expect(image.size.height == 1200)
+        }
+
+        @Test("Every imported receipt gets its own distinct file")
+        func eachReceiptGetsItsOwnFile() async throws {
+            for _ in 0..<2 {
+                _ = try await store.importScan(
+                    pages: [TestImage.solid(width: 200, height: 300)],
+                    capturedAt: .now
+                )
+            }
 
             let paths = try fetchAll().map(\.relativePath)
             #expect(Set(paths).count == 2)
@@ -169,10 +179,13 @@ extension ImagePipelineSuite {
 
         @Test("Deleting only the requested receipts leaves the rest intact")
         func deleteIsScoped() async throws {
-            let ids = try await store.importScan(
-                pages: [TestImage.solid(width: 200, height: 300), TestImage.solid(width: 200, height: 300)],
-                capturedAt: .now
-            )
+            var ids: [UUID] = []
+            for _ in 0..<2 {
+                ids += try await store.importScan(
+                    pages: [TestImage.solid(width: 200, height: 300)],
+                    capturedAt: .now
+                )
+            }
 
             try await store.delete(receiptsWithIDs: [ids[0]])
 
