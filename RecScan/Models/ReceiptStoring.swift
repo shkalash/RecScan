@@ -16,8 +16,9 @@ protocol ReceiptStoring: Sendable {
 
     /// Persists one scan session.
     ///
-    /// A session of more than one page becomes a single receipt: the pages are stacked
-    /// into one tall image, because a receipt that spans pages is still one purchase.
+    /// Each page becomes its own receipt: a scan session is how a stack of separate
+    /// receipts is captured. Multi-page *PDFs* are the opposite case and are stitched
+    /// into one receipt before they reach the store.
     /// - Returns: the identifiers of the created receipts, in page order.
     @discardableResult
     func importScan(pages: [UIImage], capturedAt: Date) async throws -> [UUID]

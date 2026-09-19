@@ -43,41 +43,22 @@ actor ReceiptStore: ReceiptStoring, ModelActor {
 
     // MARK: - Import
 
-    /// Stores one scan session as a single receipt.
+    /// Stores each page of a scan session as its own receipt.
     ///
-    /// A multi-page session is one long receipt that did not fit the frame, so the pages
-    /// are stacked into one image rather than becoming a row each.
+    /// The document camera is how a stack of paper receipts gets captured in one go, so a
+    /// session is many receipts, not one long one. This is the opposite of a multi-page
+    /// PDF, which *is* one document and is stitched (see `PDFReceiptReader`) — the two
+    /// sources look alike, a list of page images, but mean different things.
+    ///
+    /// Routed through `importItems` so a scanned receipt is stamped, flagged and indexed
+    /// by exactly the same code as an imported one.
     @discardableResult
     func importScan(pages: [UIImage], capturedAt: Date = Date()) async throws -> [UUID] {
         guard !pages.isEmpty else { throw ReceiptStoreError.emptyImportRequest }
-        guard let merged = ImageStitcher.stack(pages) else {
-            throw ReceiptStoreError.emptyImportRequest
-        }
-
-        let id = UUID()
-        // The file is written first. If the save below throws, the worst case is a
-        // stray file with no row — invisible and harmless. The reverse order would
-        // leave a row pointing at nothing, which the library cannot render.
-        let relativePath = try fileStore.write(merged, for: id)
-
-        let now = Date()
-        let receipt = Receipt(
-            id: id,
-            capturedAt: capturedAt,
-            createdAt: now,
-            modifiedAt: now,
-            relativePath: relativePath,
-            currencyCode: currentDefaultCurrency(),
-            needsReview: true
+        return try await importItems(
+            pages.map { ReceiptImportItem(image: $0, capturedAt: capturedAt) }
         )
-        modelContext.insert(receipt)
-
-        try modelContext.save()
-        logger.info("Imported a scan of \(pages.count, privacy: .public) page(s).")
-        return [id]
     }
-
-    // MARK: - Import from files
 
     @discardableResult
     func importItems(_ items: [ReceiptImportItem]) async throws -> [UUID] {

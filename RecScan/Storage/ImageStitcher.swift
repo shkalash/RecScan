@@ -6,13 +6,17 @@ import UIKit
 /// Responsibilities:
 /// - Stack images vertically into one bitmap.
 ///
-/// ## Why pages are merged rather than kept as separate receipts
-/// A multi-page scan or PDF is almost always **one** long receipt that did not fit on a
-/// single page — a supermarket till roll, a hotel folio. Storing a row per page split one
+/// ## Why PDF pages are merged rather than kept as separate receipts
+/// A multi-page PDF is almost always **one** long receipt that did not fit on a single
+/// page — a supermarket till roll, a hotel folio. Storing a row per page split one
 /// purchase into several, which then had to be re-assembled everywhere downstream: the
 /// grid showed five tiles for one shop, the review sheet asked for five amounts, and the
 /// expense report counted it five times. Merging at the point of import means the rest of
 /// the app only ever deals with one image per receipt.
+///
+/// **Camera scans are deliberately not stitched.** A document-camera session is how a
+/// stack of separate paper receipts is captured, so there each page is its own receipt.
+/// Stitching those too turned twelve receipts into one.
 ///
 /// Pages are drawn at a common width so a mixed-size document does not produce a ragged
 /// edge, and the tallest realistic receipt stays within one bitmap.

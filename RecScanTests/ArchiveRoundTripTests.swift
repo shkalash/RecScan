@@ -314,9 +314,8 @@ extension ImagePipelineSuite {
             #expect(try target.receipts().first?.needsReview == true)
         }
 
-        /// A three-page scan is one receipt before the archive and must still be one
-        /// after it, rather than being split back apart on the way in.
-        @Test("A stitched multi-page scan survives the round trip as one receipt")
+        /// A three-page scan is three receipts, and must still be three after the archive.
+        @Test("Every receipt from a multi-page scan survives the round trip")
         func multiPageScanSurvives() async throws {
             let source = try Library()
             _ = try await source.store.importScan(pages: [page(), page(), page()], capturedAt: .now)
@@ -328,7 +327,7 @@ extension ImagePipelineSuite {
                 try ArchiveImporter().read(archiveAt: archive).receipts, categories: []
             )
 
-            #expect(try target.receipts().count == 1)
+            #expect(try target.receipts().count == 3)
         }
     }
 }

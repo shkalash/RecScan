@@ -128,7 +128,7 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator. 311 tests in 32 suites.
+Swift Testing, run against the Simulator. 312 tests in 32 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
@@ -156,10 +156,14 @@ Four routes, all landing in the same review sheet:
 - **Import Files** — images and PDFs, multi-select
 - **Share to RecScan** from any other app, via the share extension
 
-A document that spans pages — a multi-page PDF, a multi-page scan — becomes **one**
-receipt, its pages stacked into a single tall image. A receipt long enough to need a
-second page is still one purchase; a row per page turned one shop into several tiles, a
-review entry each, and several lines in the expense report.
+A **multi-page PDF** becomes one receipt, its pages stacked into a single tall image. A
+receipt long enough to need a second page is still one purchase; a row per page turned one
+shop into several tiles, a review entry each, and several lines in the expense report.
+
+A **multi-page camera scan** is the opposite: each page is its own receipt. The document
+camera is how a stack of paper receipts gets captured in one go, so the two sources look
+alike — a list of page images — but mean different things. Stitching scans as well turned
+twelve receipts into one.
 
 A PDF's embedded text goes straight into `ocrText` — for an e-receipt that is real text,
 and better than OCR over a picture of it.

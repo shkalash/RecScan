@@ -9,8 +9,9 @@ import UIKit
 /// Produced by every import route — Photos, Files, a shared document — so the store has a
 /// single shape to accept regardless of where a receipt came from.
 ///
-/// One item is one receipt. A multi-page document is stitched into a single image before
-/// it gets here (see `ImageStitcher`), so nothing downstream has to know about pages.
+/// One item is one receipt. A multi-page PDF is stitched into a single image before it
+/// gets here (see `ImageStitcher`); a multi-page camera scan arrives as one item per page.
+/// Either way nothing downstream has to know about pages.
 struct ReceiptImportItem: Sendable {
 
     let image: UIImage

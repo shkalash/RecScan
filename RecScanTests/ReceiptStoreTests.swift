@@ -33,30 +33,49 @@ extension ImagePipelineSuite {
             #expect(directory.fileExists(atRelativePath: receipt.relativePath))
         }
 
-        /// A receipt long enough to need three frames is still one purchase.
-        @Test("A multi-page scan becomes a single receipt")
-        func importsMultiplePagesAsOneReceipt() async throws {
+        /// A scan session is how a stack of paper receipts is captured in one go. This
+        /// test used to assert the opposite -- one stitched receipt -- which is how
+        /// scanning twelve receipts came to produce one and still passed.
+        @Test("Each page of a scan session becomes its own receipt")
+        func eachScannedPageIsAReceipt() async throws {
             let capturedAt = TestCalendar.date(year: 2026, month: 3, day: 4)
             let pages = (0..<3).map { _ in TestImage.solid(width: 300, height: 400) }
 
             let ids = try await store.importScan(pages: pages, capturedAt: capturedAt)
 
-            #expect(ids.count == 1)
+            #expect(ids.count == 3)
+            #expect(Set(ids).count == 3)
             let receipts = try fetchAll()
-            #expect(receipts.count == 1)
-            #expect(receipts.first?.capturedAt == capturedAt)
+            #expect(receipts.count == 3)
+            #expect(receipts.allSatisfy { $0.capturedAt == capturedAt })
         }
 
-        @Test("The pages of a scan are stacked into one taller image")
-        func stacksPagesVertically() async throws {
+        @Test("Scanned pages are stored as they are, not stitched")
+        func scannedPagesAreNotStitched() async throws {
             let pages = (0..<3).map { _ in TestImage.solid(width: 300, height: 400) }
 
             _ = try await store.importScan(pages: pages, capturedAt: .now)
 
-            let receipt = try #require(try fetchAll().first)
-            let image = try directory.image(atRelativePath: receipt.relativePath)
-            #expect(image.size.width == 300)
-            #expect(image.size.height == 1200)
+            for receipt in try fetchAll() {
+                let image = try directory.image(atRelativePath: receipt.relativePath)
+                #expect(image.size.height == 400)
+            }
+        }
+
+        @Test("Every scanned receipt is flagged, stamped and indexed like an import")
+        func scannedPagesMatchImports() async throws {
+            let store = ReceiptStore(
+                modelContainer: container,
+                fileStore: ImageFileStore(directoryProvider: directory, thumbnailCache: ThumbnailCache()),
+                currentDefaultCurrency: { "ILS" }
+            )
+            let pages = (0..<2).map { _ in TestImage.solid(width: 300, height: 400) }
+
+            _ = try await store.importScan(pages: pages, capturedAt: .now)
+
+            let receipts = try fetchAll()
+            #expect(receipts.allSatisfy { $0.needsReview })
+            #expect(receipts.allSatisfy { $0.currencyCode == "ILS" })
         }
 
         @Test("Every imported receipt gets its own distinct file")
