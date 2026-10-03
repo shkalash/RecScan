@@ -180,6 +180,123 @@ struct LibraryViewModelTests {
         #expect(model.selectedReceipts == expected)
     }
 
+    // MARK: - Selecting a whole month
+
+    /// The month header exists because an export is almost always one month, and neither
+    /// existing route covers it: Select All takes the library, by hand means every tile.
+    @Test("Toggling a month with nothing picked selects all of it")
+    func monthToggleSelectsEverythingInIt() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let month = model.visibleReceipts.prefix(2).map(\.id)
+
+        model.toggleSelection(among: month)
+
+        #expect(model.selection == Set(month))
+    }
+
+    @Test("Toggling a fully selected month clears it")
+    func monthToggleClearsWhenAllPicked() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let month = model.visibleReceipts.prefix(2).map(\.id)
+        model.toggleSelection(among: month)
+
+        model.toggleSelection(among: month)
+
+        #expect(model.selection.isEmpty)
+    }
+
+    /// The case with an actual decision in it. A partial selection clears rather than
+    /// completing, so the button's verb stays literally true: it says "Deselect" the
+    /// moment anything in the month is picked, and that is what it then does.
+    @Test("Toggling a partly selected month clears it rather than completing it")
+    func monthToggleClearsWhenPartlyPicked() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let month = model.visibleReceipts.prefix(3).map(\.id)
+        model.toggleSelection(of: month[1])
+
+        model.toggleSelection(among: month)
+
+        #expect(model.selection.isEmpty)
+    }
+
+    @Test("Toggling one month leaves another month's selection alone")
+    func monthToggleIsScopedToItsOwnMonth() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let august = model.visibleReceipts.prefix(2).map(\.id)
+        let september = model.visibleReceipts.suffix(2).map(\.id)
+        model.toggleSelection(among: september)
+
+        model.toggleSelection(among: august)
+
+        #expect(model.selection == Set(august + september))
+    }
+
+    @Test("Clearing one month leaves another month's selection alone")
+    func clearingOneMonthKeepsTheOther() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let august = model.visibleReceipts.prefix(2).map(\.id)
+        let september = model.visibleReceipts.suffix(2).map(\.id)
+        model.toggleSelection(among: august + september)
+
+        model.toggleSelection(among: august)
+
+        #expect(model.selection == Set(september))
+    }
+
+    @Test("A month with no receipts in it is a no-op")
+    func emptyMonthToggleDoesNothing() {
+        let model = model(with: 2)
+        model.beginSelecting()
+        model.toggleSelection(among: model.visibleReceipts.map(\.id))
+
+        model.toggleSelection(among: [UUID]())
+
+        #expect(model.selection.count == 2)
+    }
+
+    @Test("A fully selected month also counts as everything selected")
+    func monthSelectionFeedsTheToolbarState() {
+        let model = model(with: 2)
+        model.beginSelecting()
+
+        model.toggleSelection(among: model.visibleReceipts.map(\.id))
+
+        #expect(model.isEverythingSelected)
+    }
+
+    @Test("A month reports whether anything in it is picked")
+    func hasSelectionAmongReportsTheMonthState() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        let august = model.visibleReceipts.prefix(2).map(\.id)
+        let september = model.visibleReceipts.suffix(2).map(\.id)
+
+        model.toggleSelection(of: august[0])
+
+        #expect(model.hasSelection(among: august))
+        #expect(!model.hasSelection(among: september))
+    }
+
+    /// A month's selection must not outlive its receipts, or a deleted one reappears in
+    /// the export sheet.
+    @Test("Pruning drops a month selection whose receipts are gone")
+    func pruningClearsAVanishedMonth() {
+        let model = model(with: 4)
+        model.beginSelecting()
+        model.toggleSelection(among: model.visibleReceipts.map(\.id))
+        let surviving = model.visibleReceipts[0]
+
+        model.visibleReceipts = [surviving]
+        model.pruneSelection()
+
+        #expect(model.selection == [surviving.id])
+    }
+
     // MARK: - What an export contains
 
     /// The toolbar export is a shortcut for "everything I have filtered down to", so it

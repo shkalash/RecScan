@@ -1422,6 +1422,50 @@
         }
       }
     },
+    "library.month.deselect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect"
+          }
+        }
+      }
+    },
+    "library.month.deselect.accessibility %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect all receipts in %@"
+          }
+        }
+      }
+    },
+    "library.month.select": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select"
+          }
+        }
+      }
+    },
+    "library.month.select.accessibility %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select all receipts in %@"
+          }
+        }
+      }
+    },
     "library.selection.count %lld": {
       "extractionState": "manual",
       "localizations": {

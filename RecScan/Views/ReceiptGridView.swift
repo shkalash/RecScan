@@ -93,7 +93,7 @@ struct ReceiptGridView: View {
                         }
                         .padding(.horizontal, LayoutMetrics.Grid.horizontalPadding)
                     } header: {
-                        monthHeader(for: section.id)
+                        header(for: section)
                     }
                 }
             }
@@ -125,13 +125,14 @@ struct ReceiptGridView: View {
         }
     }
 
-    private func monthHeader(for month: Date) -> some View {
-        Text(ReceiptFormatting.monthTitle(for: month))
-            .font(.headline)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal)
-            .padding(.vertical, LayoutMetrics.Grid.itemSpacing / 2)
-            .background(.bar)
+    private func header(for section: MonthSection<Receipt>) -> some View {
+        let ids = section.items.map(\.id)
+        return MonthSectionHeader(
+            month: section.id,
+            isSelectionActive: model.isSelecting,
+            isAnySelected: model.hasSelection(among: ids),
+            onToggleSelection: { model.toggleSelection(among: ids) }
+        )
     }
 
     private var emptyState: some View {

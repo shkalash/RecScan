@@ -110,6 +110,34 @@ final class LibraryViewModel {
         }
     }
 
+    /// Whether any of `ids` is currently selected.
+    ///
+    /// Lives here rather than in the view so the question the month header asks and the
+    /// action it triggers cannot disagree about what "any" means.
+    func hasSelection(among ids: some Sequence<UUID>) -> Bool {
+        ids.contains { selection.contains($0) }
+    }
+
+    /// Selects all of `ids`, or clears them when any is already selected.
+    ///
+    /// Drives the per-month control in the grid header, which exists because an export is
+    /// almost always one month: Select All takes the whole library and picking a month by
+    /// hand means tapping every tile in it.
+    ///
+    /// A partial selection clears rather than completing, so the button's verb is always
+    /// literally true — it reads "Deselect" the moment anything in the month is picked.
+    /// Only `ids` are touched, so other months keep whatever was chosen in them.
+    func toggleSelection(among ids: some Sequence<UUID>) {
+        let ids = Array(ids)
+        guard !ids.isEmpty else { return }
+
+        if hasSelection(among: ids) {
+            selection.subtract(ids)
+        } else {
+            selection.formUnion(ids)
+        }
+    }
+
     func toggleSelectAll() {
         if isEverythingSelected {
             selection.removeAll()

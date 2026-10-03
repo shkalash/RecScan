@@ -128,7 +128,7 @@ explicit `CGContext` with `noneSkipLast` instead.
 
 ## Testing
 
-Swift Testing, run against the Simulator. 312 tests in 32 suites.
+Swift Testing, run against the Simulator. 321 tests in 32 suites.
 
 Suites that encode images are nested under `ImagePipelineSuite`, which is `.serialized`.
 The Simulator's HEVC encoder is a shared resource with a bounded connection count: six
@@ -236,6 +236,12 @@ and strictly better.
 Categories are user-defined and created inline from the picker, so filing a receipt does
 not mean a detour into Settings first. Deleting a category keeps its receipts and leaves
 them uncategorised.
+
+While selecting, each month's header carries its own Select control, because an export is
+almost always one month and neither other route reaches it: the toolbar export takes
+everything the filter shows, and Select All takes the library. A partly selected month
+reads "Deselect" and clears, so the verb on the button is always literally what tapping it
+does.
 
 Every grid tile carries a small pill with its date over its amount. The library is
 already sectioned by month, so the tile shows a numeric day and month only — no year, and
